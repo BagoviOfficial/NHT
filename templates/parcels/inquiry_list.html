@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Customer Inquiries - SwiftParcel PMS{% endblock %}
+
+{% block content %}
+<div class="py-8 bg-slate-50 min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    <div class="pb-6 border-b border-slate-200 mb-6 flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Customer Support Inquiries</h1>
+        <p class="text-xs text-slate-500 mt-1">Review tickets, tracking inquiries, and submit official replies</p>
+      </div>
+      <a href="{% url 'contact' %}" target="_blank" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition">
+        Submit Ticket Form
+      </a>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase tracking-wider">
+            <tr>
+              <th class="py-3.5 px-4">Ticket #</th>
+              <th class="py-3.5 px-4">Customer Name & Contact</th>
+              <th class="py-3.5 px-4">Subject</th>
+              <th class="py-3.5 px-4">Tracking #</th>
+              <th class="py-3.5 px-4">Status</th>
+              <th class="py-3.5 px-4">Received Date</th>
+              <th class="py-3.5 px-4 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for inq in inquiries %}
+              <tr class="hover:bg-slate-50">
+                <td class="py-3.5 px-4 font-mono font-bold text-slate-900">{{ inq.ticket_number }}</td>
+                <td class="py-3.5 px-4">
+                  <div class="font-bold text-slate-900">{{ inq.name }}</div>
+                  <div class="text-[11px] text-slate-500">{{ inq.email }}</div>
+                </td>
+                <td class="py-3.5 px-4 font-semibold text-slate-800">{{ inq.subject }}</td>
+                <td class="py-3.5 px-4 font-mono">
+                  {% if inq.tracking_number %}
+                    <a href="{% url 'track_detail' tracking_number=inq.tracking_number %}" class="text-blue-600 hover:underline">
+                      {{ inq.tracking_number }}
+                    </a>
+                  {% else %}
+                    <span class="text-slate-400">N/A</span>
+                  {% endif %}
+                </td>
+                <td class="py-3.5 px-4">
+                  <span class="px-2.5 py-1 rounded-full font-bold {% if inq.status == 'RESOLVED' %}bg-emerald-100 text-emerald-800{% elif inq.status == 'IN_PROGRESS' %}bg-blue-100 text-blue-800{% else %}bg-amber-100 text-amber-800{% endif %}">
+                    {{ inq.get_status_display }}
+                  </span>
+                </td>
+                <td class="py-3.5 px-4 text-slate-500">{{ inq.created_at|date:"M d, Y" }}</td>
+                <td class="py-3.5 px-4 text-right">
+                  <a href="{% url 'inquiry_detail' ticket_number=inq.ticket_number %}" class="px-3 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-semibold rounded transition">
+                    View & Reply &rarr;
+                  </a>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="7" class="py-8 text-center text-slate-400">No support tickets found.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

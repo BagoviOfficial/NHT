@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}Customer Support & Inquiries - SwiftParcel{% endblock %}
+
+{% block content %}
+<div class="py-12 bg-slate-50 min-h-screen">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6">
+    
+    <div class="text-center mb-10">
+      <div class="w-12 h-12 mx-auto rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+        <i data-lucide="help-circle" class="w-6 h-6"></i>
+      </div>
+      <h1 class="text-3xl font-black text-slate-900 tracking-tight">Customer Support & Inquiries</h1>
+      <p class="text-sm text-slate-500 mt-2">Have questions about your consignment, delivery timeline, or corporate rates? Send us a ticket.</p>
+    </div>
+
+    <div class="bg-white p-8 sm:p-10 rounded-3xl shadow-xl border border-slate-200">
+      <form method="POST">
+        {% csrf_token %}
+
+        <div class="space-y-4 text-xs">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Your Full Name *</label>
+              {{ form.name }}
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Email Address *</label>
+              {{ form.email }}
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Phone Number</label>
+              {{ form.phone }}
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Consignment / Tracking # (if any)</label>
+              {{ form.tracking_number }}
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Subject *</label>
+            {{ form.subject }}
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Message Details *</label>
+            {{ form.message }}
+          </div>
+
+          <div class="pt-4">
+            <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition shadow-md">
+              Submit Ticket & Receive Case Number &rarr;
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Direct Helpline -->
+    <div class="mt-8 text-center text-xs text-slate-500">
+      Need urgent delivery assistance? Contact hotline: <a href="tel:{{ SUPPORT_PHONE }}" class="font-bold text-slate-800">{{ SUPPORT_PHONE }}</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

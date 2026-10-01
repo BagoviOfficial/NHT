@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Courier Delivery Portal - SwiftParcel{% endblock %}
+
+{% block content %}
+<div class="py-6 bg-slate-50 min-h-screen">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6">
+    
+    <!-- Courier Profile Strip -->
+    <div class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-6 rounded-2xl shadow-md mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div>
+        <span class="text-xs uppercase tracking-wider text-indigo-400 font-semibold">Active Courier</span>
+        <h1 class="text-2xl font-black">{{ user.get_full_name|default:user.username }}</h1>
+        <p class="text-xs text-slate-300 mt-1 flex items-center">
+          <i data-lucide="bike" class="w-3.5 h-3.5 mr-1 text-emerald-400"></i>
+          {{ user_profile.vehicle_type|default:"Courier Vehicle" }} &bull; Plate: {{ user_profile.license_plate|default:"N/A" }}
+        </p>
+      </div>
+
+      <div class="flex items-center space-x-3 bg-white/10 p-3 rounded-xl border border-white/10 text-xs">
+        <div class="text-center px-3 border-r border-white/15">
+          <span class="text-xl font-black text-amber-400">{{ assigned_parcels.count }}</span>
+          <span class="block text-[10px] text-slate-300">Pending</span>
+        </div>
+        <div class="text-center px-3">
+          <span class="text-xl font-black text-emerald-400">{{ completed_today }}</span>
+          <span class="block text-[10px] text-slate-300">Delivered Today</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Assigned Deliveries -->
+    <div class="mb-8">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-base font-bold text-slate-900 flex items-center">
+          <i data-lucide="package" class="w-4 h-4 mr-2 text-blue-600"></i> My Assigned Deliveries ({{ assigned_parcels.count }})
+        </h2>
+        <span class="text-xs text-slate-500">Tap to action</span>
+      </div>
+
+      <div class="space-y-4">
+        {% for p in assigned_parcels %}
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-300 transition">
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex items-center space-x-2">
+                <span class="font-mono font-bold text-sm text-blue-600">{{ p.tracking_number }}</span>
+                {% if p.is_fragile %}
+                  <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">FRAGILE</span>
+                {% endif %}
+              </div>
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold {{ p.status_badge_class }}">
+                {{ p.get_status_display }}
+              </span>
+            </div>
+
+            <!-- Recipient & Address -->
+            <div class="mb-3 text-xs">
+              <p class="text-base font-bold text-slate-900">{{ p.receiver_name }}</p>
+              <p class="text-slate-600 mt-1 flex items-start">
+                <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0 mt-0.5"></i>
+                {{ p.receiver_address }}, {{ p.receiver_city }}
+              </p>
+              <p class="text-slate-600 mt-1 flex items-center">
+                <i data-lucide="phone" class="w-3.5 h-3.5 mr-1 text-slate-400"></i>
+                <a href="tel:{{ p.receiver_phone }}" class="text-blue-600 font-semibold">{{ p.receiver_phone }}</a>
+              </p>
+            </div>
+
+            <!-- Package Specs & Cash on Delivery -->
+            <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center text-xs mb-4">
+              <span class="text-slate-500">{{ p.weight_kg }} kg &bull; {{ p.get_category_display }}</span>
+              <span class="font-bold {% if p.payment_status == 'PAID' %}text-emerald-700{% else %}text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200{% endif %}">
+                {% if p.payment_status == 'PAID' %}PAID{% else %}COLLECT: ${{ p.total_price }}{% endif %}
+              </span>
+            </div>
+
+            <!-- Action Button -->
+            <a href="{% url 'courier_delivery_action' tracking_number=p.tracking_number %}" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition shadow-sm">
+              <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+              <span>Complete Delivery / Log Handover &rarr;</span>
+            </a>
+          </div>
+        {% empty %}
+          <div class="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-400">
+            <i data-lucide="check-circle" class="w-10 h-10 mx-auto text-emerald-400 mb-2"></i>
+            <p class="font-bold text-slate-700">All deliveries completed!</p>
+            <p class="text-xs text-slate-500 mt-1">No pending parcel deliveries assigned to your queue.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Assigned Pickups -->
+    {% if assigned_pickups %}
+      <div class="mb-8">
+        <h2 class="text-base font-bold text-slate-900 mb-4 flex items-center">
+          <i data-lucide="calendar" class="w-4 h-4 mr-2 text-indigo-600"></i> Doorstep Pickups Assigned to You
+        </h2>
+        <div class="space-y-3">
+          {% for pick in assigned_pickups %}
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-xs">
+              <div class="flex justify-between items-start mb-2">
+                <span class="font-mono font-bold text-slate-800">{{ pick.request_number }}</span>
+                <span class="text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded">{{ pick.get_preferred_time_slot_display }}</span>
+              </div>
+              <p class="font-bold text-slate-900 text-sm">{{ pick.customer_name }}</p>
+              <p class="text-slate-600">{{ pick.pickup_address }}, {{ pick.pickup_city }}</p>
+              <p class="text-slate-600 mt-1">Tel: <a href="tel:{{ pick.customer_phone }}" class="text-blue-600 font-semibold">{{ pick.customer_phone }}</a></p>
+              <p class="text-slate-500 mt-1">Est. Weight: {{ pick.estimated_weight_kg }} kg &bull; {{ pick.package_description }}</p>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

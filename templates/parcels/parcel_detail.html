@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Consignment #{{ parcel.tracking_number }} - SwiftParcel PMS{% endblock %}
+
+{% block content %}
+<div class="py-8 bg-slate-50 min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    <!-- Header Banner -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div>
+        <div class="flex items-center space-x-3 mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Shipment Management</span>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold {{ parcel.status_badge_class }}">
+            {{ parcel.get_status_display }}
+          </span>
+          {% if parcel.is_fragile %}
+            <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">FRAGILE</span>
+          {% endif %}
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-black font-mono text-slate-900 tracking-tight">{{ parcel.tracking_number }}</h1>
+        <p class="text-xs text-slate-500 mt-1">
+          Registered by {{ parcel.created_by.get_full_name|default:parcel.created_by.username }} on {{ parcel.created_at|date:"M d, Y - h:i A" }}
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <a href="{% url 'parcel_waybill' tracking_number=parcel.tracking_number %}" target="_blank" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center transition shadow-sm">
+          <i data-lucide="printer" class="w-4 h-4 mr-1.5"></i> Print Waybill Label
+        </a>
+        <a href="{% url 'parcel_invoice' tracking_number=parcel.tracking_number %}" target="_blank" class="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center transition">
+          <i data-lucide="file-text" class="w-4 h-4 mr-1.5"></i> Invoice Receipt
+        </a>
+        <a href="{% url 'track_detail' tracking_number=parcel.tracking_number %}" target="_blank" class="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl text-xs font-semibold flex items-center transition">
+          <i data-lucide="external-link" class="w-4 h-4 mr-1.5"></i> Public Track View
+        </a>
+      </div>
+    </div>
+
+    <!-- Main Grid: Operational Actions & Shipment Information -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-8">
+      
+      <!-- Left Column (8 cols): Route, Specs, and Timeline -->
+      <div class="lg:col-span-8 space-y-6">
+        
+        <!-- Route Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center">
+            <i data-lucide="git-commit" class="w-4 h-4 mr-1.5 text-blue-600"></i> Route & Hub Transfer Info
+          </h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <span class="text-slate-400 block mb-1">Origin Hub</span>
+              <p class="font-bold text-slate-900 text-sm">{{ parcel.origin_branch.name }}</p>
+              <p class="text-slate-500">{{ parcel.origin_branch.city }}, {{ parcel.origin_branch.state }}</p>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-blue-50/60 border border-blue-200">
+              <span class="text-blue-600 font-semibold block mb-1">Current Physical Location</span>
+              <p class="font-bold text-blue-950 text-sm">{{ parcel.current_branch.name|default:"In Linehaul Transit" }}</p>
+              <p class="text-blue-800">{{ parcel.current_branch.city|default:"On Route" }}</p>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <span class="text-slate-400 block mb-1">Destination Hub</span>
+              <p class="font-bold text-slate-900 text-sm">{{ parcel.destination_branch.name }}</p>
+              <p class="text-slate-500">{{ parcel.destination_branch.city }}, {{ parcel.destination_branch.state }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sender & Receiver Details -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-3 text-xs">
+            <h3 class="font-bold uppercase tracking-wider text-slate-400 flex items-center">
+              <i data-lucide="upload" class="w-4 h-4 mr-1.5 text-blue-500"></i> Sender Particulars
+            </h3>
+            <div>
+              <p class="text-base font-bold text-slate-900">{{ parcel.sender_name }}</p>
+              <p class="text-slate-600 mt-0.5"><i data-lucide="phone" class="w-3.5 h-3.5 inline mr-1 text-slate-400"></i> {{ parcel.sender_phone }}</p>
+              {% if parcel.sender_email %}<p class="text-slate-500">{{ parcel.sender_email }}</p>{% endif %}
+            </div>
+            <p class="text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              {{ parcel.sender_address }}, {{ parcel.sender_city }}
+            </p>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-3 text-xs">
+            <h3 class="font-bold uppercase tracking-wider text-slate-400 flex items-center">
+              <i data-lucide="download" class="w-4 h-4 mr-1.5 text-emerald-500"></i> Recipient Particulars
+            </h3>
+            <div>
+              <p class="text-base font-bold text-slate-900">{{ parcel.receiver_name }}</p>
+              <p class="text-slate-600 mt-0.5"><i data-lucide="phone" class="w-3.5 h-3.5 inline mr-1 text-slate-400"></i> {{ parcel.receiver_phone }}</p>
+              {% if parcel.receiver_email %}<p class="text-slate-500">{{ parcel.receiver_email }}</p>{% endif %}
+            </div>
+            <p class="text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              {{ parcel.receiver_address }}, {{ parcel.receiver_city }}
+            </p>
+            <div class="flex items-center space-x-2 pt-1">
+              <span class="text-slate-400">Security OTP:</span>
+              <span class="font-mono font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded">{{ parcel.security_otp }}</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Specifications & Financials Grid -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4 mr-1.5 text-indigo-600"></i> Specifications & Billing
+          </h2>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs mb-4">
+            <div>
+              <span class="text-slate-400 block">Service Level</span>
+              <span class="font-bold text-slate-900">{{ parcel.get_service_type_display }}</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block">Category</span>
+              <span class="font-bold text-slate-900">{{ parcel.get_category_display }}</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block">Dimensions & Weight</span>
+              <span class="font-bold text-slate-900">{{ parcel.weight_kg }} kg ({{ parcel.length_cm }}x{{ parcel.width_cm }}x{{ parcel.height_cm }} cm)</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block">Declared Value</span>
+              <span class="font-bold text-slate-900">${{ parcel.declared_value }}</span>
+            </div>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-wrap justify-between items-center text-xs gap-3">
+            <div class="space-x-4">
+              <span>Base: <strong>${{ parcel.base_price }}</strong></span>
+              <span>Weight: <strong>${{ parcel.weight_price }}</strong></span>
+              <span>Fragile: <strong>${{ parcel.fragile_fee }}</strong></span>
+              <span>Insurance: <strong>${{ parcel.insurance_fee }}</strong></span>
+              <span>Tax: <strong>${{ parcel.tax_amount }}</strong></span>
+            </div>
+            <div class="text-base font-black text-slate-900">
+              Total: ${{ parcel.total_price }}
+              <span class="text-xs font-bold ml-2 px-2 py-0.5 rounded {% if parcel.payment_status == 'PAID' %}bg-emerald-100 text-emerald-800{% else %}bg-amber-100 text-amber-800{% endif %}">
+                {{ parcel.get_payment_status_display }} ({{ parcel.get_payment_method_display }})
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Activity Timeline -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-6 flex items-center">
+            <i data-lucide="activity" class="w-4 h-4 mr-1.5 text-blue-600"></i> Event Audit Trail
+          </h2>
+
+          <div class="relative border-l-2 border-slate-200 ml-4 space-y-6">
+            {% for log in logs %}
+              <div class="relative pl-6">
+                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-white border-4 {% if forloop.first %}border-blue-600{% else %}border-slate-300{% endif %}"></div>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between">
+                  <span class="text-xs font-bold text-slate-900">{{ log.get_status_display }}</span>
+                  <span class="text-[11px] text-slate-400">{{ log.created_at|date:"M d, Y - h:i A" }}</span>
+                </div>
+                <p class="text-xs font-semibold text-blue-600 mt-0.5">{{ log.location_name }}</p>
+                <p class="text-xs text-slate-600 mt-1">{{ log.activity }}</p>
+                {% if log.notes %}
+                  <p class="text-[11px] text-slate-400 italic mt-0.5">Remarks: {{ log.notes }}</p>
+                {% endif %}
+                <p class="text-[10px] text-slate-400 mt-1">Logged by: {{ log.updated_by.get_full_name|default:log.updated_by.username|default:"System" }}</p>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column (4 cols): Quick Operations & Courier Assignment -->
+      <div class="lg:col-span-4 space-y-6">
+        
+        <!-- Status Transition Box -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h3 class="font-bold text-sm text-slate-900 mb-3 flex items-center">
+            <i data-lucide="refresh-cw" class="w-4 h-4 mr-1.5 text-blue-600"></i> Update Parcel Status
+          </h3>
+          <p class="text-xs text-slate-500 mb-4">Advance parcel lifecycle milestone and record movement event in PostgreSQL audit log.</p>
+
+          <form method="POST" action="{% url 'parcel_update_status' tracking_number=parcel.tracking_number %}" class="space-y-3 text-xs">
+            {% csrf_token %}
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">New Milestone Status *</label>
+              {{ status_form.status }}
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Current Branch / Facility</label>
+              {{ status_form.branch }}
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Location Details *</label>
+              {{ status_form.location_name }}
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Activity Description *</label>
+              {{ status_form.activity }}
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Internal Notes</label>
+              {{ status_form.notes }}
+            </div>
+            <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition shadow-sm">
+              Save Status & Log Event
+            </button>
+          </form>
+        </div>
+
+        <!-- Courier Assignment Box -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h3 class="font-bold text-sm text-slate-900 mb-3 flex items-center">
+            <i data-lucide="bike" class="w-4 h-4 mr-1.5 text-orange-600"></i> Dispatch to Courier
+          </h3>
+          {% if parcel.assigned_courier %}
+            <div class="p-3 bg-orange-50 rounded-xl border border-orange-200 text-xs mb-3">
+              <span class="text-orange-700 font-semibold block">Currently Assigned To:</span>
+              <p class="font-bold text-orange-950 text-sm mt-0.5">{{ parcel.assigned_courier.get_full_name|default:parcel.assigned_courier.username }}</p>
+              <p class="text-orange-800 text-[11px]">{{ parcel.assigned_courier.profile.vehicle_type }} (Plate: {{ parcel.assigned_courier.profile.license_plate }})</p>
+            </div>
+          {% endif %}
+
+          <form method="POST" action="{% url 'parcel_assign_courier' tracking_number=parcel.tracking_number %}" class="space-y-3 text-xs">
+            {% csrf_token %}
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Assign Courier Rider *</label>
+              {{ courier_form.courier }}
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Delivery Route Notes</label>
+              {{ courier_form.delivery_notes }}
+            </div>
+            <button type="submit" class="w-full py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-xl transition shadow-sm">
+              Assign Courier & Mark Out for Delivery
+            </button>
+          </form>
+        </div>
+
+        <!-- Printable Barcode Preview Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 text-center">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-3">Waybill Barcode Preview</span>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-center">
+            {{ barcode_svg|safe }}
+          </div>
+          {% if qr_code_data %}
+            <div class="mt-4 flex items-center justify-center">
+              <img src="{{ qr_code_data }}" alt="QR Code" class="w-24 h-24 p-1 rounded-lg border border-slate-200 bg-white">
+            </div>
+          {% endif %}
+          <div class="mt-4">
+            <a href="{% url 'parcel_waybill' tracking_number=parcel.tracking_number %}" target="_blank" class="text-xs font-semibold text-blue-600 hover:underline">
+              Open Full Print Waybill &rarr;
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+{% endblock %}

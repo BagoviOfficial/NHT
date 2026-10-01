@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Manifest #{{ manifest.manifest_number }} - SwiftParcel PMS{% endblock %}
+
+{% block content %}
+<div class="py-8 bg-slate-50 min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    <!-- Header -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div>
+        <div class="flex items-center space-x-3 mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Linehaul Manifest</span>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold {% if manifest.status == 'DISPATCHED' %}bg-amber-100 text-amber-800{% elif manifest.status == 'RECEIVED' %}bg-emerald-100 text-emerald-800{% else %}bg-slate-100 text-slate-700{% endif %}">
+            {{ manifest.get_status_display }}
+          </span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-black font-mono text-slate-900 tracking-tight">{{ manifest.manifest_number }}</h1>
+        <p class="text-xs text-slate-500 mt-1">
+          Route: <strong class="text-slate-800">{{ manifest.origin_branch.name }}</strong> &rarr; <strong class="text-slate-800">{{ manifest.destination_branch.name }}</strong>
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        {% if manifest.status == 'DRAFT' %}
+          <a href="{% url 'manifest_dispatch' manifest_number=manifest.manifest_number %}" onclick="return confirm('Confirm dispatch? This will mark all loaded parcels as IN TRANSIT.');" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold flex items-center transition shadow-sm">
+            <i data-lucide="send" class="w-4 h-4 mr-1.5"></i> Mark Dispatched (In Transit)
+          </a>
+        {% elif manifest.status == 'DISPATCHED' %}
+          <a href="{% url 'manifest_receive' manifest_number=manifest.manifest_number %}" onclick="return confirm('Confirm receipt at destination hub? This will update all loaded parcels to ARRIVED AT DESTINATION.');" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center transition shadow-sm">
+            <i data-lucide="check-check" class="w-4 h-4 mr-1.5"></i> Mark Arrived & Unloaded
+          </a>
+        {% endif %}
+        
+        <button onclick="window.print()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center transition shadow-sm">
+          <i data-lucide="printer" class="w-4 h-4 mr-1.5"></i> Print Manifest
+        </button>
+      </div>
+    </div>
+
+    <!-- Trip & Driver Information -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 text-xs">
+      <div class="bg-white p-4 rounded-xl border border-slate-200">
+        <span class="text-slate-400 block mb-1">Driver Name</span>
+        <span class="font-bold text-slate-900 text-sm">{{ manifest.driver_name }}</span>
+        <span class="block text-slate-500 mt-0.5">{{ manifest.driver_phone }}</span>
+      </div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200">
+        <span class="text-slate-400 block mb-1">Vehicle Plate / Unit</span>
+        <span class="font-mono font-bold text-slate-900 text-sm">{{ manifest.vehicle_plate }}</span>
+      </div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200">
+        <span class="text-slate-400 block mb-1">Consolidated Parcels</span>
+        <span class="font-bold text-blue-600 text-sm">{{ parcels.count }} Packages</span>
+      </div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200">
+        <span class="text-slate-400 block mb-1">Dispatch Time</span>
+        <span class="font-bold text-slate-900 text-sm">
+          {% if manifest.dispatched_at %}{{ manifest.dispatched_at|date:"M d, H:i" }}{% else %}Not dispatched yet{% endif %}
+        </span>
+      </div>
+    </div>
+
+    <!-- Loaded Consignments Table -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+      <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+        <h3 class="font-bold text-slate-900 text-sm">Manifest Consignment Load List</h3>
+        <span class="text-xs text-slate-500">Total Weight: {{ total_weight|default:"--" }} kg</span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase tracking-wider">
+            <tr>
+              <th class="py-3 px-4">#</th>
+              <th class="py-3 px-4">Tracking #</th>
+              <th class="py-3 px-4">Recipient</th>
+              <th class="py-3 px-4">Destination</th>
+              <th class="py-3 px-4">Weight</th>
+              <th class="py-3 px-4">Category</th>
+              <th class="py-3 px-4">Current Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for p in parcels %}
+              <tr class="hover:bg-slate-50">
+                <td class="py-3 px-4 text-slate-400">{{ forloop.counter }}</td>
+                <td class="py-3 px-4 font-mono font-bold text-blue-600">
+                  <a href="{% url 'parcel_detail' tracking_number=p.tracking_number %}" class="hover:underline">
+                    {{ p.tracking_number }}
+                  </a>
+                  {% if p.is_fragile %}
+                    <span class="ml-1 text-[10px] text-rose-600 font-bold">FRAGILE</span>
+                  {% endif %}
+                </td>
+                <td class="py-3 px-4">
+                  <div class="font-bold text-slate-900">{{ p.receiver_name }}</div>
+                  <div class="text-[11px] text-slate-400">{{ p.receiver_city }}</div>
+                </td>
+                <td class="py-3 px-4 font-semibold text-slate-800">{{ p.destination_branch.name }}</td>
+                <td class="py-3 px-4">{{ p.weight_kg }} kg</td>
+                <td class="py-3 px-4">{{ p.get_category_display }}</td>
+                <td class="py-3 px-4">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-semibold {{ p.status_badge_class }}">
+                    {{ p.get_status_display }}
+                  </span>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="7" class="py-8 text-center text-slate-400">No parcels attached to this manifest.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Print area barcode -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 text-center">
+      <div style="max-width: 300px; margin: 0 auto;">
+        {{ barcode_svg|safe }}
+      </div>
+      <p class="text-[11px] text-slate-400 mt-2">Driver must scan this manifest upon arrival at destination warehouse.</p>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

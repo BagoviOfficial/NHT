@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Branch Network - SwiftParcel PMS{% endblock %}
+
+{% block content %}
+<div class="py-12 bg-slate-50 min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    <div class="text-center max-w-2xl mx-auto mb-12">
+      <span class="text-xs font-bold uppercase tracking-wider text-blue-600">Nationwide Footprint</span>
+      <h1 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-1">Our Hub & Branch Network</h1>
+      <p class="text-sm text-slate-500 mt-2">Strategically located sorting facilities, regional distribution centers, and walk-in customer counters.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for branch in branches %}
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 hover:shadow-md hover:border-blue-400 transition flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="font-mono text-xs font-bold px-2.5 py-1 rounded bg-blue-50 text-blue-700 border border-blue-100">
+                {{ branch.code }}
+              </span>
+              <span class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded {% if branch.branch_type == 'MAIN_HUB' %}bg-purple-100 text-purple-800{% elif branch.branch_type == 'DISTRIBUTION' %}bg-indigo-100 text-indigo-800{% else %}bg-slate-100 text-slate-700{% endif %}">
+                {{ branch.get_branch_type_display }}
+              </span>
+            </div>
+
+            <h2 class="text-lg font-bold text-slate-900 mb-2">{{ branch.name }}</h2>
+
+            <div class="space-y-2 text-xs text-slate-600 mb-6">
+              <p class="flex items-start">
+                <i data-lucide="map-pin" class="w-4 h-4 mr-2 text-slate-400 shrink-0 mt-0.5"></i>
+                <span>{{ branch.address }}, {{ branch.city }}, {{ branch.state }} {{ branch.postal_code }}</span>
+              </p>
+              <p class="flex items-center">
+                <i data-lucide="phone" class="w-4 h-4 mr-2 text-slate-400"></i>
+                <span>{{ branch.phone }}</span>
+              </p>
+              {% if branch.email %}
+                <p class="flex items-center">
+                  <i data-lucide="mail" class="w-4 h-4 mr-2 text-slate-400"></i>
+                  <span>{{ branch.email }}</span>
+                </p>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span class="text-emerald-600 font-semibold flex items-center">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+              Open for Drop-offs
+            </span>
+            <a href="{% url 'parcel_create' %}" class="text-blue-600 font-bold hover:underline">
+              Ship from here &rarr;
+            </a>
+          </div>
+        </div>
+      {% empty %}
+        <p class="text-slate-400 col-span-3 text-center py-12">No branches active at the moment.</p>
+      {% endfor %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}
