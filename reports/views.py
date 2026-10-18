@@ -27,12 +27,12 @@ def daily_statement_view(request):
     else:
         selected_date = timezone.localdate()
 
-    if getattr(request.user, 'tenant', None):
+    if hasattr(request.user, 'tenant') and request.user.tenant:
         tenant = request.user.tenant
     elif request.user.is_superuser:
         tenant = getattr(request, 'tenant', None)
     else:
-        tenant = None
+        tenant = getattr(request.user, 'tenant', None)
 
     data = get_daily_statement_data(selected_date, route_id=route_id, tenant=tenant)
     if tenant:
@@ -45,6 +45,10 @@ def daily_statement_view(request):
         'selected_date': selected_date,
         'selected_route_id': route_id,
         'routes': routes,
+        'tenant': tenant,
+        'COMPANY_NAME': data['company_name'],
+        'HEAD_OFFICE': data['head_office'],
+        'CURRENCY': data['currency'],
     })
 
 
@@ -67,12 +71,12 @@ def daily_statement_pdf_view(request):
     else:
         selected_date = timezone.localdate()
 
-    if getattr(request.user, 'tenant', None):
+    if hasattr(request.user, 'tenant') and request.user.tenant:
         tenant = request.user.tenant
     elif request.user.is_superuser:
         tenant = getattr(request, 'tenant', None)
     else:
-        tenant = None
+        tenant = getattr(request.user, 'tenant', None)
 
     data = get_daily_statement_data(selected_date, route_id=route_id, tenant=tenant)
     pdf_bytes = generate_daily_statement_pdf_bytes(data)

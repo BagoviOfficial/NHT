@@ -119,7 +119,7 @@
   <!-- Header -->
   <div class="header-box text-center">
     <div class="company-title uppercase">{{ COMPANY_NAME }}</div>
-    <div style="white-space: pre-line; font-size: 10px;">{{ SITE_SETTINGS.receipt_header }}</div>
+    <div style="white-space: pre-line; font-size: 10px;">{{ RECEIPT_HEADER|default:SITE_SETTINGS.receipt_header }}</div>
     <div>Hotline: {{ SUPPORT_PHONE }}</div>
     <div>Date: {{ parcel.created_at|date:"Y-m-d H:i" }}</div>
   </div>
@@ -143,7 +143,7 @@
 
   <!-- Route & Vehicle Details -->
   <div>
-    <div><strong>ORIGIN:</strong> {{ SITE_SETTINGS.head_office }}</div>
+    <div><strong>ORIGIN:</strong> {{ parcel.route.origin|default:HEAD_OFFICE }}</div>
     <div><strong>DESTINATION:</strong> {{ parcel.route.name }}</div>
     {% if parcel.truck_plate_number %}
       <div><strong>VEHICLE:</strong> {{ parcel.truck_plate_number }}</div>
@@ -208,7 +208,7 @@
 
   <!-- Receipt Footer -->
   <div class="text-center" style="font-size: 9.5px; margin-top: 6px; white-space: pre-line;">
-    {{ SITE_SETTINGS.receipt_footer }}
+    {{ RECEIPT_FOOTER|default:SITE_SETTINGS.receipt_footer }}
   </div>
 
   <div class="dashed-line"></div>

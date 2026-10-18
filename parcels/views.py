@@ -79,11 +79,19 @@ def public_track_view(request, tracking_number=None):
         except Parcel.DoesNotExist:
             not_found = True
 
+    tenant = parcel.tenant if parcel else getattr(request, 'tenant', None)
+
     return render(request, 'parcels/public_track.html', {
         'parcel': parcel,
         'track_code': track_code,
         'not_found': not_found,
         'settings': settings,
+        'SITE_SETTINGS': settings,
+        'COMPANY_NAME': tenant.name if tenant else settings.company_name,
+        'SUPPORT_PHONE': tenant.support_phone if tenant else settings.support_phone,
+        'HEAD_OFFICE': tenant.head_office if tenant else settings.head_office,
+        'CURRENCY': tenant.currency if tenant else settings.currency,
+        'ACTIVE_TENANT': tenant,
     })
 
 
@@ -557,23 +565,40 @@ def parcel_receipt_view(request, tracking_number):
     """
     Dedicated 80mm thermal receipt view.
     Generates server-side QR code linking exclusively to the public tracking URL.
+    Scoped strictly to the parcel's owning tenant for accurate branding.
     """
     parcel = get_object_or_404(
-        Parcel.objects.select_related('route', 'created_by').prefetch_related('items'),
+        Parcel.objects.select_related('route', 'created_by', 'tenant').prefetch_related('items'),
         tracking_number=tracking_number
     )
 
     if not can_user_access_parcel(request.user, parcel):
         raise PermissionDenied("Access denied.")
 
-    settings = SiteSettings.load(tenant=parcel.tenant or getattr(request, 'tenant', None))
+    tenant = parcel.tenant or getattr(request, 'tenant', None)
+    settings = SiteSettings.load(tenant=tenant)
     tracking_url = request.build_absolute_uri(f"/track/{parcel.tracking_number}/")
     qr_svg = generate_tracking_qr_svg(tracking_url)
+
+    company_name = (tenant.name if tenant else None) or settings.company_name
+    currency = (tenant.currency if tenant else None) or settings.currency
+    head_office = (tenant.head_office if tenant else None) or settings.head_office
+    support_phone = (tenant.support_phone if tenant else None) or settings.support_phone
+    receipt_header = (tenant.receipt_header if tenant and tenant.receipt_header else None) or settings.receipt_header
+    receipt_footer = (tenant.receipt_footer if tenant and tenant.receipt_footer else None) or settings.receipt_footer
 
     return render(request, 'parcels/receipt_80mm.html', {
         'parcel': parcel,
         'items': parcel.items.all(),
         'settings': settings,
+        'SITE_SETTINGS': settings,
+        'COMPANY_NAME': company_name,
+        'CURRENCY': currency,
+        'HEAD_OFFICE': head_office,
+        'SUPPORT_PHONE': support_phone,
+        'RECEIPT_HEADER': receipt_header,
+        'RECEIPT_FOOTER': receipt_footer,
+        'tenant': tenant,
         'tracking_url': tracking_url,
         'qr_svg': qr_svg,
     })

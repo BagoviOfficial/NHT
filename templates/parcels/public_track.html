@@ -55,7 +55,7 @@
           <div class="row g-3 mb-4 pb-3 border-bottom">
             <div class="col-sm-6">
               <span class="text-secondary small d-block">Origin Dispatch Station</span>
-              <strong class="fs-6 text-dark"><i class="bi bi-geo-alt text-primary me-1"></i> Nairobi Head Office</strong>
+              <strong class="fs-6 text-dark"><i class="bi bi-geo-alt text-primary me-1"></i> {{ parcel.route.origin|default:HEAD_OFFICE }}</strong>
             </div>
             <div class="col-sm-6">
               <span class="text-secondary small d-block">Destination Station</span>

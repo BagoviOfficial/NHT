@@ -500,3 +500,66 @@ class SaaSMultiTenantTests(TestCase):
         self.assertContains(response, '#1b5e20')
         self.assertContains(response, '#ffd600')
 
+    def test_tenant_receipt_and_manifest_branding(self):
+        """Verify that tenant receipts and A4 manifests display tenant unique branding and headings."""
+        # Ensure Tenant 1 (NHT) has settings in the DB first
+        from core.models import SiteSettings
+        SiteSettings.load(tenant=self.tenant_1)
+
+        self.tenant_2.receipt_header = "TAWAKAL CUSTOM RECEIPT HEADER"
+        self.tenant_2.receipt_footer = "TAWAKAL CUSTOM RECEIPT FOOTER"
+        self.tenant_2.save()
+
+        # Create parcel for tenant 2
+        items = [{'description': 'Spices', 'wrap_type': 'Sack', 'quantity': 2, 'unit_price': Decimal('25.00')}]
+        parcel = create_parcel(
+            route=self.route_2, sender_name="Fatuma", sender_phone="0711000000",
+            receiver_name="Amina", receiver_phone="0722000000", receiver_id_number="87654321",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+            items_data=items, created_by=self.clerk_2
+        )
+
+        self.client.login(username='twk_clerk', password='Password123!')
+        res_receipt = self.client.get(reverse('parcel_receipt', args=[parcel.tracking_number]))
+        self.assertEqual(res_receipt.status_code, 200)
+        content_receipt = res_receipt.content.decode()
+        self.assertIn("TAWAKAL CUSTOM RECEIPT HEADER", content_receipt)
+        self.assertIn("TAWAKAL CUSTOM RECEIPT FOOTER", content_receipt)
+        self.assertIn("Tawakal Express", content_receipt)
+        self.assertNotIn("Northern Highways Transporters", content_receipt)
+
+        self.client.login(username='twk_admin', password='Password123!')
+        res_manifest = self.client.get(reverse('daily_statement'))
+        self.assertEqual(res_manifest.status_code, 200)
+        content_manifest = res_manifest.content.decode()
+        self.assertIn("Tawakal Express", content_manifest)
+        self.assertNotIn("Northern Highways Transporters", content_manifest)
+
+        res_manifest_pdf = self.client.get(reverse('daily_statement_pdf'))
+        self.assertEqual(res_manifest_pdf.status_code, 200)
+        self.assertTrue(res_manifest_pdf.content.startswith(b'%PDF'))
+
+        # Public tracking page for tenant 2 consignment
+        self.client.logout()
+        res_track = self.client.get(reverse('public_track', args=[parcel.tracking_number]))
+        self.assertEqual(res_track.status_code, 200)
+        content_track = res_track.content.decode()
+        self.assertIn("Tawakal Express", content_track)
+        self.assertNotIn("Northern Highways Transporters", content_track)
+        self.assertNotIn("Nairobi Head Office", content_track)
+
+        # Platform Admin impersonating/switching to Tenant 2
+        self.client.login(username='platform_owner', password='OwnerPassword123!')
+        self.client.get(reverse('saas_switch_tenant', args=[self.tenant_2.pk]))
+        res_admin_manifest = self.client.get(reverse('daily_statement'))
+        self.assertEqual(res_admin_manifest.status_code, 200)
+        admin_manifest_html = res_admin_manifest.content.decode()
+        self.assertIn("Tawakal Express", admin_manifest_html)
+        # Check printable statement card specifically has Tawakal and not Northern
+        sheet_html = admin_manifest_html.split('<!-- Printable Statement Sheet -->')[-1].split('<!-- Signoff block')[0]
+        self.assertIn("Tawakal Express", sheet_html)
+        self.assertNotIn("Northern Highways Transporters", sheet_html)
+
+
+
+

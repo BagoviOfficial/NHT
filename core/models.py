@@ -76,6 +76,27 @@ class SiteSettings(models.Model):
         super().save(*args, **kwargs)
         if self.tenant_id:
             cache.delete(f'site_settings_tenant_{self.tenant_id}')
+            try:
+                tenant = self.tenant
+                if tenant:
+                    sync_fields = []
+                    for s_field, t_field in [
+                        ('company_name', 'name'),
+                        ('currency', 'currency'),
+                        ('head_office', 'head_office'),
+                        ('support_phone', 'support_phone'),
+                        ('support_email', 'support_email'),
+                        ('receipt_header', 'receipt_header'),
+                        ('receipt_footer', 'receipt_footer'),
+                    ]:
+                        val = getattr(self, s_field)
+                        if val and getattr(tenant, t_field) != val:
+                            setattr(tenant, t_field, val)
+                            sync_fields.append(t_field)
+                    if sync_fields:
+                        tenant.save(update_fields=sync_fields)
+            except Exception:
+                pass
         cache.delete('site_settings_cache')
 
     @classmethod
@@ -107,9 +128,9 @@ class SiteSettings(models.Model):
         else:
             obj = cache.get('site_settings_cache')
             if obj is None:
-                obj = cls.objects.filter(tenant=None).first() or cls.objects.first()
+                obj = cls.objects.filter(tenant=None).first()
                 if not obj:
-                    obj = cls.objects.create()
+                    obj, _ = cls.objects.get_or_create(tenant=None)
                 cache.set('site_settings_cache', obj, timeout=3600)
             return obj
 

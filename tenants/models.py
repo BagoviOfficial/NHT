@@ -178,6 +178,31 @@ class Tenant(models.Model):
                 self.max_routes = 500
 
         super().save(*args, **kwargs)
+        if self.pk:
+            from django.core.cache import cache
+            cache.delete(f'site_settings_tenant_{self.pk}')
+            try:
+                from core.models import SiteSettings
+                site_settings = SiteSettings.objects.filter(tenant=self).first()
+                if site_settings:
+                    sync_fields = []
+                    for t_field, s_field in [
+                        ('name', 'company_name'),
+                        ('currency', 'currency'),
+                        ('head_office', 'head_office'),
+                        ('support_phone', 'support_phone'),
+                        ('support_email', 'support_email'),
+                        ('receipt_header', 'receipt_header'),
+                        ('receipt_footer', 'receipt_footer'),
+                    ]:
+                        val = getattr(self, t_field)
+                        if val and getattr(site_settings, s_field) != val:
+                            setattr(site_settings, s_field, val)
+                            sync_fields.append(s_field)
+                    if sync_fields:
+                        site_settings.save(update_fields=sync_fields)
+            except Exception:
+                pass
 
     @property
     def admin_user(self):
