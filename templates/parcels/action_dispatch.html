@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Dispatch Parcel {{ parcel.tracking_number }} — {{ COMPANY_NAME }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-md-6">
+    <div class="card card-nht shadow-sm">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h5 class="fw-bold mb-0 text-warning text-dark"><i class="bi bi-truck me-2"></i>Dispatch Consignment</h5>
+      </div>
+      <div class="card-body p-4">
+        <div class="alert alert-light border mb-4">
+          <div class="d-flex justify-content-between">
+            <span class="text-secondary small">Tracking Code:</span>
+            <strong class="text-primary">{{ parcel.tracking_number }}</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-secondary small">Destination Station:</span>
+            <strong>{{ parcel.route.name }}</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-secondary small">Recipient:</span>
+            <span>{{ parcel.receiver_name }}</span>
+          </div>
+        </div>
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold text-secondary small">Truck / Bus Plate Number *</label>
+            {{ form.truck_plate_number }}
+            {% if form.truck_plate_number.errors %}<div class="text-danger small mt-1">{{ form.truck_plate_number.errors.0 }}</div>{% endif %}
+            <small class="text-muted">Vehicle assigned for this linehaul leg.</small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold text-secondary small">Driver Full Name *</label>
+            {{ form.driver_name }}
+            {% if form.driver_name.errors %}<div class="text-danger small mt-1">{{ form.driver_name.errors.0 }}</div>{% endif %}
+            <small class="text-muted">Designated transporter driver.</small>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold text-secondary small">Dispatch Remarks / Notes</label>
+            {{ form.note }}
+          </div>
+
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'parcel_detail' parcel.tracking_number %}" class="btn btn-light border">Cancel</a>
+            <button type="submit" class="btn btn-warning fw-semibold text-dark px-4">
+              <i class="bi bi-truck me-1"></i> Confirm Dispatch
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

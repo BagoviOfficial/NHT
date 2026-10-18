@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block title %}SaaS Master Dashboard — Client Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+
+  <!-- Header Banner -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-primary fs-6 px-3 py-2"><i class="bi bi-clouds-fill me-1"></i> Multi-Tenant SaaS</span>
+        <h1 class="h2 fw-bold mb-0">Platform Client Dashboard</h1>
+      </div>
+      <p class="text-muted mt-1 mb-0">
+        Centrally provision, monitor, and manage multi-tenant courier enterprises from a single control center.
+      </p>
+    </div>
+    <div class="mt-3 mt-md-0 d-flex gap-2">
+      <a href="{% url 'saas_export_tenants_csv' %}" class="btn btn-outline-success px-3 py-2 d-flex align-items-center" title="Download client roster CSV">
+        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+      </a>
+      <a href="{% url 'saas_install_client' %}" class="btn btn-warning fw-bold px-4 py-2 shadow-sm d-flex align-items-center">
+        <i class="bi bi-plus-circle-fill fs-5 me-2"></i> Install New Client
+      </a>
+      <a href="{% url 'saas_exit_tenant' %}" class="btn btn-outline-secondary px-3 py-2" title="Reset workspace context">
+        <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI Metrics Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+      <div class="card card-nht h-100 p-3 border-start border-4 border-primary">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted text-uppercase fw-semibold small">Installed Clients</span>
+            <h2 class="fw-bold mb-0 mt-1">{{ total_clients }}</h2>
+            <small class="text-success"><i class="bi bi-check-circle-fill"></i> {{ active_clients }} Active</small>
+            {% if trial_clients %}<small class="text-warning ms-1">• {{ trial_clients }} Trial</small>{% endif %}
+            {% if suspended_clients %}<small class="text-danger ms-1">• {{ suspended_clients }} Suspended</small>{% endif %}
+          </div>
+          <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary">
+            <i class="bi bi-building fs-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+      <div class="card card-nht h-100 p-3 border-start border-4 border-success">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted text-uppercase fw-semibold small">Platform Parcels</span>
+            <h2 class="fw-bold mb-0 mt-1">{{ total_parcels }}</h2>
+            <small class="text-muted">Total consignments across clients</small>
+          </div>
+          <div class="rounded-circle bg-success bg-opacity-10 p-3 text-success">
+            <i class="bi bi-box-seam-fill fs-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+      <div class="card card-nht h-100 p-3 border-start border-4 border-info">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted text-uppercase fw-semibold small">Total Revenue</span>
+            <h2 class="fw-bold mb-0 mt-1 text-primary">KES {{ total_revenue|floatformat:2 }}</h2>
+            <small class="text-muted">Gross platform shipping volume</small>
+          </div>
+          <div class="rounded-circle bg-info bg-opacity-10 p-3 text-info">
+            <i class="bi bi-cash-stack fs-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+      <div class="card card-nht h-100 p-3 border-start border-4 border-warning">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted text-uppercase fw-semibold small">Total Staff Accounts</span>
+            <h2 class="fw-bold mb-0 mt-1">{{ total_staff }}</h2>
+            <small class="text-muted">Active users across tenants</small>
+          </div>
+          <div class="rounded-circle bg-warning bg-opacity-10 p-3 text-warning">
+            <i class="bi bi-people-fill fs-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Filter Controls -->
+  <div class="card card-nht p-3 mb-4">
+    <form method="get" class="row g-2 align-items-center">
+      <div class="col-md-5">
+        <div class="input-group">
+          <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Search by client name, slug, prefix, phone, hub...">
+        </div>
+      </div>
+      <div class="col-md-3">
+        <select name="status" class="form-select">
+          <option value="">-- All Statuses --</option>
+          {% for val, label in status_choices %}
+            <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name="plan" class="form-select">
+          <option value="">-- All Plans --</option>
+          {% for val, label in plan_choices %}
+            <option value="{{ val }}" {% if plan_filter == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-grow-1"><i class="bi bi-funnel"></i> Filter</button>
+        {% if q or status_filter or plan_filter %}
+          <a href="{% url 'saas_dashboard' %}" class="btn btn-outline-secondary" title="Clear Filters"><i class="bi bi-x-lg"></i></a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- Installed Clients Table -->
+  <div class="card card-nht shadow-sm mb-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+      <h5 class="fw-bold mb-0">
+        <i class="bi bi-buildings text-primary me-2"></i> Installed Clients ({{ tenants.count }})
+      </h5>
+      <a href="{% url 'saas_install_client' %}" class="btn btn-sm btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> Add Client
+      </a>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Client Organization</th>
+            <th>Identifier / Prefix</th>
+            <th>Hub & Currency</th>
+            <th>Plan & Status</th>
+            <th class="text-center">Parcels</th>
+            <th class="text-end">Revenue</th>
+            <th class="text-center">Staff</th>
+            <th class="text-center">Routes</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in tenants %}
+            <tr>
+              <td>
+                <div class="fw-bold text-dark fs-6">{{ t.name }}</div>
+                <small class="text-muted">
+                  <i class="bi bi-telephone me-1"></i>{{ t.support_phone|default:"No phone" }} &bull;
+                  <i class="bi bi-envelope me-1"></i>{{ t.support_email }}
+                </small>
+              </td>
+              <td>
+                <span class="badge bg-secondary font-monospace">{{ t.slug }}</span>
+                <span class="badge bg-dark font-monospace text-warning ms-1">{{ t.tracking_prefix }}</span>
+              </td>
+              <td>
+                <div><i class="bi bi-geo-alt text-primary me-1"></i>{{ t.head_office }}</div>
+                <small class="badge bg-light text-dark border">{{ t.currency }}</small>
+              </td>
+              <td>
+                <div><span class="badge bg-info text-dark">{{ t.get_plan_display }}</span></div>
+                {% if t.status == 'ACTIVE' %}
+                  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                {% elif t.status == 'TRIAL' %}
+                  <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Trial</span>
+                {% else %}
+                  <span class="badge bg-danger"><i class="bi bi-slash-circle me-1"></i>Suspended</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <span class="fw-bold text-primary">{{ t.total_parcels }}</span>
+              </td>
+              <td class="text-end fw-semibold">
+                {{ t.currency }} {{ t.total_revenue|floatformat:2 }}
+              </td>
+              <td class="text-center">
+                <span class="badge bg-light text-dark border">{{ t.total_users }}</span>
+              </td>
+              <td class="text-center">
+                <span class="badge bg-light text-dark border">{{ t.total_routes }}</span>
+              </td>
+              <td class="text-end">
+                <div class="btn-group btn-group-sm">
+                  <!-- Launch Client Portal -->
+                  <a href="{% url 'saas_switch_tenant' t.id %}" class="btn btn-outline-primary" title="Launch Client Portal">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> Launch
+                  </a>
+                  <!-- View Details -->
+                  <a href="{% url 'saas_client_detail' t.slug %}" class="btn btn-outline-secondary" title="Client Details & Staff">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                  <!-- Edit Settings -->
+                  <a href="{% url 'saas_client_edit' t.slug %}" class="btn btn-outline-secondary" title="Edit Client Configuration">
+                    <i class="bi bi-gear"></i>
+                  </a>
+                  <!-- Toggle Status (Activate / Suspend) -->
+                  <form method="post" action="{% url 'saas_client_toggle_status' t.slug %}" class="d-inline" onsubmit="return confirm('Change status for {{ t.name }}?');">
+                    {% csrf_token %}
+                    {% if t.is_active and t.status == 'ACTIVE' %}
+                      <button type="submit" class="btn btn-outline-danger" title="Suspend Client">
+                        <i class="bi bi-pause-fill"></i>
+                      </button>
+                    {% else %}
+                      <button type="submit" class="btn btn-outline-success" title="Activate Client">
+                        <i class="bi bi-play-fill"></i>
+                      </button>
+                    {% endif %}
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="9" class="text-center py-5">
+                <i class="bi bi-inbox text-muted display-4 d-block mb-3"></i>
+                <h5>No Clients Found</h5>
+                <p class="text-muted mb-3">Get started by installing your first client organization.</p>
+                <a href="{% url 'saas_install_client' %}" class="btn btn-warning fw-bold">
+                  <i class="bi bi-plus-circle me-1"></i> Install Client Now
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recent SaaS Activity Log -->
+  <div class="card card-nht shadow-sm">
+    <div class="card-header bg-white py-3">
+      <h6 class="fw-bold mb-0"><i class="bi bi-clock-history text-secondary me-2"></i> Recent Platform Activity</h6>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-striped mb-0 small">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Actor</th>
+              <th>Client</th>
+              <th>Action</th>
+              <th>Details / Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in recent_audits %}
+              <tr>
+                <td class="text-muted">{{ a.timestamp|date:"Y-m-d H:i:s" }}</td>
+                <td class="fw-semibold">{{ a.actor.username|default:"System" }}</td>
+                <td>
+                  {% if a.tenant %}
+                    <span class="badge bg-secondary">{{ a.tenant.name }}</span>
+                  {% else %}
+                    <span class="badge bg-light text-dark">Platform</span>
+                  {% endif %}
+                </td>
+                <td><code>{{ a.action }}</code></td>
+                <td>{{ a.reason|default:"—" }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="text-center text-muted py-3">No recent SaaS operations recorded.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

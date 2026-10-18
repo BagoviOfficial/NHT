@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Record Arrival — {{ parcel.tracking_number }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-md-6">
+    <div class="card card-nht shadow-sm">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h5 class="fw-bold mb-0 text-info text-dark"><i class="bi bi-geo-alt-fill me-2"></i>Record Arrival at Destination</h5>
+      </div>
+      <div class="card-body p-4">
+        <div class="alert alert-light border mb-4">
+          <div>Tracking Code: <strong class="text-primary">{{ parcel.tracking_number }}</strong></div>
+          <div>Destination: <strong>{{ parcel.route.name }}</strong></div>
+          <div>Vehicle / Driver: <strong>{{ parcel.truck_plate_number }} ({{ parcel.driver_name }})</strong></div>
+        </div>
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-4">
+            <label class="form-label fw-semibold text-secondary small">Arrival Inspection Notes</label>
+            {{ form.note }}
+            <small class="text-muted">Record cargo condition upon offloading at destination station.</small>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'parcel_detail' parcel.tracking_number %}" class="btn btn-light border">Cancel</a>
+            <button type="submit" class="btn btn-info text-dark fw-semibold px-4">
+              <i class="bi bi-check2-circle me-1"></i> Confirm Station Arrival
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

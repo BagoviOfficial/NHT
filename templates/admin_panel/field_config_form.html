@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Field: {{ config.field_key }} — {{ COMPANY_NAME }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-md-6">
+    <div class="card card-nht shadow-sm">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h5 class="fw-bold mb-0">Configure Field: <code>{{ config.field_key }}</code></h5>
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Display Label *</label>
+            {{ form.label }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Placeholder</label>
+            {{ form.placeholder }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary">Help Text</label>
+            {{ form.help_text }}
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-secondary">Sort Order</label>
+              {{ form.order }}
+            </div>
+            <div class="col-6 pt-4">
+              <div class="form-check">
+                {{ form.is_active }}
+                <label class="form-check-label small fw-semibold" for="{{ form.is_active.id_for_label }}">Active</label>
+              </div>
+            </div>
+          </div>
+          <div class="row g-2 mb-4">
+            <div class="col-6">
+              <div class="form-check">
+                {{ form.is_required }}
+                <label class="form-check-label small fw-semibold" for="{{ form.is_required.id_for_label }}">Mandatory Required</label>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="form-check">
+                {{ form.is_visible }}
+                <label class="form-check-label small fw-semibold" for="{{ form.is_visible.id_for_label }}">Visible in Form</label>
+              </div>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'admin_panel_config' %}" class="btn btn-light border">Cancel</a>
+            <button type="submit" class="btn btn-primary fw-semibold px-4">Save Field</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

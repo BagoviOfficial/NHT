@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Account Suspended — {{ tenant.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5 text-center">
+  <div class="row justify-content-center">
+    <div class="col-md-7">
+      <div class="card card-nht shadow-sm p-5 border-warning">
+        <div class="mb-4">
+          <i class="bi bi-exclamation-triangle-fill text-warning display-1"></i>
+        </div>
+        <h2 class="fw-bold mb-3">Portal Temporarily Unavailable</h2>
+        <p class="text-muted fs-5 mb-4">
+          The portal for <strong>{{ tenant.name }}</strong> is currently suspended or undergoing administrative maintenance.
+        </p>
+        <div class="alert alert-light border text-start p-3 mb-4">
+          <p class="mb-1"><i class="bi bi-telephone text-primary me-2"></i><strong>Hotline:</strong> {{ tenant.support_phone }}</p>
+          <p class="mb-0"><i class="bi bi-envelope text-primary me-2"></i><strong>Email:</strong> {{ tenant.support_email }}</p>
+        </div>
+        <div>
+          <a href="{% url 'logout' %}" class="btn btn-outline-secondary">Sign Out</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

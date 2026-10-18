@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Client Installed Successfully — SaaS Hub{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      <div class="card card-nht shadow p-4 p-md-5 border-success text-center">
+        <div class="mb-3">
+          <i class="bi bi-check-circle-fill text-success display-2"></i>
+        </div>
+
+        <h2 class="fw-bold text-dark mb-1">Client Installed Successfully!</h2>
+        <p class="text-muted mb-4">
+          The enterprise courier workspace for <strong>{{ tenant.name }}</strong> has been initialized and provisioned.
+        </p>
+
+        <!-- Credentials Card -->
+        <div class="card bg-light border text-start p-4 mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+            <h6 class="fw-bold mb-0 text-primary">
+              <i class="bi bi-key-fill me-1"></i> Administrator Access Credentials
+            </h6>
+            <span class="badge bg-danger">Save Immediately</span>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-sm-4 text-muted small">Company Name:</div>
+            <div class="col-sm-8 fw-bold">{{ tenant.name }}</div>
+
+            <div class="col-sm-4 text-muted small">Subdomain / Slug:</div>
+            <div class="col-sm-8 font-monospace fw-semibold">{{ tenant.slug }}</div>
+
+            <div class="col-sm-4 text-muted small">Consignment Prefix:</div>
+            <div class="col-sm-8"><span class="badge bg-dark text-warning font-monospace">{{ tenant.tracking_prefix }}</span> (e.g. {{ tenant.tracking_prefix }}-XXXXXXXX)</div>
+
+            <div class="col-sm-4 text-muted small">Admin Username:</div>
+            <div class="col-sm-8 font-monospace fw-bold text-dark" id="credUsername">{{ admin_user.username }}</div>
+
+            <div class="col-sm-4 text-muted small">Admin Password:</div>
+            <div class="col-sm-8 font-monospace fw-bold text-danger fs-6" id="credPassword">{{ raw_password }}</div>
+
+            <div class="col-sm-4 text-muted small">Admin Phone:</div>
+            <div class="col-sm-8">{{ admin_user.phone }}</div>
+
+            <div class="col-sm-4 text-muted small">Admin Email:</div>
+            <div class="col-sm-8">{{ admin_user.email }}</div>
+          </div>
+
+          <button class="btn btn-outline-secondary btn-sm w-100" onclick="copyCredentials()" id="copyBtn">
+            <i class="bi bi-clipboard me-1"></i> Copy Credentials to Clipboard
+          </button>
+        </div>
+
+        <!-- Launch & Navigation Actions -->
+        <div class="d-flex flex-wrap justify-content-center gap-3">
+          <a href="{% url 'saas_switch_tenant' tenant.id %}" class="btn btn-primary btn-lg px-4 fw-bold shadow-sm">
+            <i class="bi bi-box-arrow-up-right me-2"></i> Launch Client Workspace Now
+          </a>
+          <a href="{% url 'saas_client_detail' tenant.slug %}" class="btn btn-outline-primary btn-lg px-3">
+            <i class="bi bi-eye me-1"></i> Client Details
+          </a>
+          <a href="{% url 'saas_dashboard' %}" class="btn btn-outline-secondary btn-lg px-3">
+            <i class="bi bi-grid me-1"></i> Return to SaaS Dashboard
+          </a>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function copyCredentials() {
+  const text = `=== CLIENT ACCESS CREDENTIALS ===\nCompany: {{ tenant.name }}\nSlug: {{ tenant.slug }}\nPrefix: {{ tenant.tracking_prefix }}\nAdmin Username: {{ admin_user.username }}\nAdmin Password: {{ raw_password }}\nAdmin Phone: {{ admin_user.phone }}\nAdmin Email: {{ admin_user.email }}\n=================================`;
+  navigator.clipboard.writeText(text).then(function() {
+    const btn = document.getElementById('copyBtn');
+    btn.innerHTML = '<i class="bi bi-check2 text-success me-1"></i> Copied to Clipboard!';
+    btn.classList.add('btn-success');
+    btn.classList.remove('btn-outline-secondary');
+    setTimeout(() => {
+      btn.innerHTML = '<i class="bi bi-clipboard me-1"></i> Copy Credentials to Clipboard';
+      btn.classList.remove('btn-success');
+      btn.classList.add('btn-outline-secondary');
+    }, 3000);
+  });
+}
+</script>
+{% endblock %}

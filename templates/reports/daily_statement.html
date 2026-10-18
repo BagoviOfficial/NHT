@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+
+{% block title %}Daily Consignment Statement — {{ selected_date }} — {{ COMPANY_NAME }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  @media print {
+    @page {
+      size: A4 landscape;
+      margin: 10mm;
+    }
+    .no-print {
+      display: none !important;
+    }
+    body {
+      background: #ffffff !important;
+      font-size: 10pt;
+    }
+    .table {
+      font-size: 8.5pt !important;
+    }
+    .container-fluid {
+      padding: 0 !important;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 no-print">
+  <div>
+    <h3 class="fw-bold mb-1">Daily Consignment Statement</h3>
+    <p class="text-secondary small mb-0">Consolidated manifest and financial audit report (A4)</p>
+  </div>
+  <div class="d-flex gap-2 mt-2 mt-sm-0">
+    <button class="btn btn-outline-secondary" onclick="window.print()">
+      <i class="bi bi-printer me-1"></i> Print Statement
+    </button>
+    <a href="{% url 'daily_statement_pdf' %}?date={{ selected_date|date:'Y-m-d' }}{% if selected_route_id %}&route={{ selected_route_id }}{% endif %}" class="btn btn-primary fw-semibold" target="_blank">
+      <i class="bi bi-file-earmark-pdf me-1"></i> Download A4 PDF
+    </a>
+  </div>
+</div>
+
+<!-- Date and Route Selector (no-print) -->
+<div class="card card-nht p-3 mb-4 shadow-sm no-print">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-4 col-sm-6">
+      <label class="form-label small fw-semibold text-secondary">Select Statement Date</label>
+      <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" class="form-control">
+    </div>
+
+    <div class="col-md-4 col-sm-6">
+      <label class="form-label small fw-semibold text-secondary">Filter by Route</label>
+      <select name="route" class="form-select">
+        <option value="">-- All Destination Routes --</option>
+        {% for r in routes %}
+          <option value="{{ r.id }}" {% if selected_route_id == r.id|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-4 col-sm-12 d-flex gap-2">
+      <button type="submit" class="btn btn-primary w-100 fw-semibold">
+        <i class="bi bi-arrow-repeat me-1"></i> Generate Report
+      </button>
+      <a href="{% url 'daily_statement' %}" class="btn btn-light border">Today</a>
+    </div>
+  </form>
+</div>
+
+<!-- Printable Statement Sheet -->
+<div class="card card-nht p-4 shadow-sm">
+  <!-- Report Header -->
+  <div class="text-center border-bottom pb-3 mb-4">
+    <h4 class="fw-bold text-dark text-uppercase mb-1">{{ data.company_name }}</h4>
+    <h6 class="fw-semibold text-secondary mb-1">DAILY PARCEL WAYBILL & CONSIGNMENT STATEMENT (A4)</h6>
+    <div class="small text-muted">
+      Statement Date: <strong>{{ data.statement_date|date:"l, d F Y" }}</strong> &bull; Origin Terminal: <strong>{{ data.head_office }}</strong>
+    </div>
+  </div>
+
+  <!-- Consolidated Financial Summary (Section 24) -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-md-3">
+      <div class="p-3 bg-light rounded border text-center">
+        <span class="text-secondary small fw-semibold text-uppercase d-block">Shipment Count</span>
+        <h4 class="fw-bold text-dark mb-0 mt-1">{{ data.total_shipments }}</h4>
+      </div>
+    </div>
+    <div class="col-sm-6 col-md-3">
+      <div class="p-3 bg-light rounded border text-center">
+        <span class="text-secondary small fw-semibold text-uppercase d-block">Gross Consignment Total</span>
+        <h4 class="fw-bold text-primary mb-0 mt-1">{{ data.currency }} {{ data.gross_total|floatformat:"2g" }}</h4>
+      </div>
+    </div>
+    <div class="col-sm-4 col-md-2">
+      <div class="p-3 bg-light rounded border text-center">
+        <span class="text-secondary small fw-semibold text-uppercase d-block">PAID Total</span>
+        <h5 class="fw-bold text-success mb-0 mt-1">{{ data.currency }} {{ data.paid_total|floatformat:"2g" }}</h5>
+      </div>
+    </div>
+    <div class="col-sm-4 col-md-2">
+      <div class="p-3 bg-light rounded border text-center">
+        <span class="text-secondary small fw-semibold text-uppercase d-block">COD Pending</span>
+        <h5 class="fw-bold text-warning mb-0 mt-1">{{ data.currency }} {{ data.cod_total|floatformat:"2g" }}</h5>
+      </div>
+    </div>
+    <div class="col-sm-4 col-md-2">
+      <div class="p-3 bg-light rounded border text-center">
+        <span class="text-secondary small fw-semibold text-uppercase d-block">UNPAID Total</span>
+        <h5 class="fw-bold text-danger mb-0 mt-1">{{ data.currency }} {{ data.unpaid_total|floatformat:"2g" }}</h5>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Manifest Table -->
+  <div class="table-responsive">
+    <table class="table table-bordered table-sm align-middle mb-4">
+      <thead class="table-dark small text-uppercase text-center">
+        <tr>
+          <th>#</th>
+          <th>Tracking #</th>
+          <th>Route</th>
+          <th>Sender</th>
+          <th>Receiver</th>
+          <th>Items</th>
+          <th>Vehicle</th>
+          <th>Driver</th>
+          <th>Payment</th>
+          <th class="text-end">Amount ({{ data.currency }})</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in data.shipments %}
+          <tr>
+            <td class="text-center small">{{ forloop.counter }}</td>
+            <td class="fw-bold">{{ p.tracking_number }}</td>
+            <td>{{ p.route.name }}</td>
+            <td>
+              <div class="small fw-semibold">{{ p.sender_name }}</div>
+              <small class="text-muted">{{ p.sender_phone }}</small>
+            </td>
+            <td>
+              <div class="small fw-semibold">{{ p.receiver_name }}</div>
+              <small class="text-muted">{{ p.receiver_phone }}</small>
+            </td>
+            <td class="text-center">{{ p.items.count }}</td>
+            <td class="small">{{ p.truck_plate_number|default:"-" }}</td>
+            <td class="small">{{ p.driver_name|default:"-" }}</td>
+            <td class="text-center">
+              <span class="badge {% if p.payment_status == 'PAID' %}bg-success{% elif p.payment_status == 'COD' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                {{ p.payment_status }}
+              </span>
+            </td>
+            <td class="text-end fw-semibold">{{ p.price|floatformat:"2g" }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="10" class="text-center py-4 text-muted">No shipments registered for this date.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <td colspan="9" class="text-end text-uppercase">Final Consolidated Total:</td>
+          <td class="text-end text-primary fs-6">{{ data.currency }} {{ data.gross_total|floatformat:"2g" }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Route Subtotals Table -->
+  {% if data.routes_summary %}
+    <h6 class="fw-bold text-secondary text-uppercase border-bottom pb-2 mb-3">Destination Route Breakdown</h6>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped">
+        <thead class="small text-uppercase">
+          <tr>
+            <th>Route Name</th>
+            <th class="text-center">Parcels</th>
+            <th class="text-end">Paid Subtotal</th>
+            <th class="text-end">COD Subtotal</th>
+            <th class="text-end">Unpaid Subtotal</th>
+            <th class="text-end">Route Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r_name, r_data in data.routes_summary.items %}
+            <tr>
+              <td class="fw-semibold">{{ r_name }}</td>
+              <td class="text-center">{{ r_data.count }}</td>
+              <td class="text-end text-success">{{ data.currency }} {{ r_data.paid_subtotal|floatformat:"2g" }}</td>
+              <td class="text-end text-warning">{{ data.currency }} {{ r_data.cod_subtotal|floatformat:"2g" }}</td>
+              <td class="text-end text-danger">{{ data.currency }} {{ r_data.unpaid_subtotal|floatformat:"2g" }}</td>
+              <td class="text-end fw-bold">{{ data.currency }} {{ r_data.subtotal|floatformat:"2g" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+  <!-- Signoff block for printed reports -->
+  <div class="row mt-5 pt-4 border-top text-center text-secondary small">
+    <div class="col-4">
+      <div class="border-top pt-2">Prepared By: ___________________</div>
+    </div>
+    <div class="col-4">
+      <div class="border-top pt-2">Operations Manager: ___________________</div>
+    </div>
+    <div class="col-4">
+      <div class="border-top pt-2">Audit Verification: ___________________</div>
+    </div>
+  </div>
+
+  <!-- Mandatory Footer Credit (Section 38) -->
+  <div class="text-center small text-muted mt-4 pt-3 border-top">
+    {{ FOOTER_CREDIT }}
+  </div>
+</div>
+{% endblock %}

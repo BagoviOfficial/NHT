@@ -1,202 +1,178 @@
 from django import forms
-from django.contrib.auth.models import User
-from .models import (
-    Parcel, Branch, ShippingRate, TransitManifest,
-    PickupRequest, CustomerInquiry, UserProfile
-)
+from django.forms import inlineformset_factory, BaseInlineFormSet
+from django.core.exceptions import ValidationError
+from decimal import Decimal
+from routes.models import Route
+from core.services import apply_dynamic_field_configs, get_active_choices
+from .models import Parcel, ShipmentItem, PaymentStatus, PaymentMethod
 
 
-class UserLoginForm(forms.Form):
-    username = forms.CharField(
-        widget=forms.TextInput(attrs={
-            'class': 'w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none',
-            'placeholder': 'Enter your username'
-        })
-    )
-    password = forms.CharField(
-        widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none',
-            'placeholder': '••••••••'
-        })
+class ParcelForm(forms.ModelForm):
+    route = forms.ModelChoiceField(
+        queryset=Route.objects.filter(is_active=True),
+        empty_label="-- Select Destination Route --",
+        widget=forms.Select(attrs={'class': 'form-select'})
     )
 
-
-class CustomerRegisterForm(forms.ModelForm):
-    first_name = forms.CharField(max_length=30, required=True, widget=forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white'}))
-    last_name = forms.CharField(max_length=30, required=True, widget=forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white'}))
-    email = forms.EmailField(required=True, widget=forms.EmailInput(attrs={'class': 'w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white'}))
-    password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white'}))
-    phone = forms.CharField(required=True, widget=forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white'}))
-    address = forms.CharField(required=False, widget=forms.Textarea(attrs={'rows': 2, 'class': 'w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white'}))
-    city = forms.CharField(required=False, widget=forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white'}))
-
-    class Meta:
-        model = User
-        fields = ['username', 'first_name', 'last_name', 'email', 'password']
-        widgets = {
-            'username': forms.TextInput(attrs={'class': 'w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white'}),
-        }
-
-
-class ParcelBookingForm(forms.ModelForm):
     class Meta:
         model = Parcel
         fields = [
-            'sender_name', 'sender_phone', 'sender_email', 'sender_address', 'sender_city',
-            'receiver_name', 'receiver_phone', 'receiver_email', 'receiver_address', 'receiver_city',
-            'origin_branch', 'destination_branch', 'delivery_type', 'service_type', 'category',
-            'item_description', 'weight_kg', 'length_cm', 'width_cm', 'height_cm',
-            'is_fragile', 'declared_value', 'payment_method', 'payment_status'
+            'route',
+            'sender_name', 'sender_phone',
+            'receiver_name', 'receiver_phone', 'receiver_id_number',
+            'payment_status', 'payment_method'
         ]
         widgets = {
-            'sender_name': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'Full Name'}),
-            'sender_phone': forms.TextInput(attrs={'class': 'input-control', 'placeholder': '+1 (555) 000-0000'}),
-            'sender_email': forms.EmailInput(attrs={'class': 'input-control', 'placeholder': 'sender@example.com'}),
-            'sender_address': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'Street Address / Apt'}),
-            'sender_city': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'City'}),
-
-            'receiver_name': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'Recipient Name'}),
-            'receiver_phone': forms.TextInput(attrs={'class': 'input-control', 'placeholder': '+1 (555) 000-0000'}),
-            'receiver_email': forms.EmailInput(attrs={'class': 'input-control', 'placeholder': 'receiver@example.com'}),
-            'receiver_address': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'Destination Address or Branch Hold'}),
-            'receiver_city': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'City'}),
-
-            'origin_branch': forms.Select(attrs={'class': 'select-control'}),
-            'destination_branch': forms.Select(attrs={'class': 'select-control'}),
-            'delivery_type': forms.Select(attrs={'class': 'select-control'}),
-            'service_type': forms.Select(attrs={'class': 'select-control', 'id': 'id_service_type'}),
-            'category': forms.Select(attrs={'class': 'select-control'}),
-            
-            'item_description': forms.Textarea(attrs={'class': 'input-control', 'rows': 2, 'placeholder': 'Brief description of contents (e.g., Electronics, Documents)'}),
-            'weight_kg': forms.NumberInput(attrs={'class': 'input-control', 'step': '0.1', 'min': '0.1', 'id': 'id_weight_kg'}),
-            'length_cm': forms.NumberInput(attrs={'class': 'input-control', 'step': '1', 'min': '1', 'id': 'id_length_cm'}),
-            'width_cm': forms.NumberInput(attrs={'class': 'input-control', 'step': '1', 'min': '1', 'id': 'id_width_cm'}),
-            'height_cm': forms.NumberInput(attrs={'class': 'input-control', 'step': '1', 'min': '1', 'id': 'id_height_cm'}),
-            
-            'is_fragile': forms.CheckboxInput(attrs={'class': 'w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500', 'id': 'id_is_fragile'}),
-            'declared_value': forms.NumberInput(attrs={'class': 'input-control', 'step': '0.01', 'min': '0.00', 'id': 'id_declared_value'}),
-            'payment_method': forms.Select(attrs={'class': 'select-control'}),
-            'payment_status': forms.Select(attrs={'class': 'select-control'}),
+            'sender_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Full Name'}),
+            'sender_phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+254 7...'}),
+            'receiver_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Full Name'}),
+            'receiver_phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+254 7...'}),
+            'receiver_id_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ID / Passport Number'}),
+            'payment_status': forms.Select(attrs={'class': 'form-select'}),
+            'payment_method': forms.Select(attrs={'class': 'form-select'}),
         }
 
+    def __init__(self, *args, tenant=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if tenant:
+            self.fields['route'].queryset = Route.objects.filter(tenant=tenant, is_active=True)
+        apply_dynamic_field_configs(self, tenant=tenant)
+        
+        # Override choices if ChoiceConfig exists
+        dynamic_pay_statuses = get_active_choices('payment_status', tenant=tenant)
+        if dynamic_pay_statuses:
+            self.fields['payment_status'].choices = dynamic_pay_statuses
 
-class ParcelStatusUpdateForm(forms.Form):
-    status = forms.ChoiceField(
-        choices=Parcel.STATUS_CHOICES,
-        widget=forms.Select(attrs={'class': 'select-control'})
-    )
-    branch = forms.ModelChoiceField(
-        queryset=Branch.objects.filter(is_active=True),
-        required=False,
-        widget=forms.Select(attrs={'class': 'select-control'})
-    )
-    location_name = forms.CharField(
-        max_length=150,
-        required=True,
-        widget=forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'e.g. NYC Central Hub - Bay 2'})
-    )
-    activity = forms.CharField(
-        max_length=255,
-        required=True,
-        widget=forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'e.g. Package arrived and sorted for delivery route'})
-    )
-    notes = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={'class': 'input-control', 'rows': 2, 'placeholder': 'Optional internal operational note'})
-    )
+        dynamic_pay_methods = get_active_choices('payment_method', tenant=tenant)
+        if dynamic_pay_methods:
+            self.fields['payment_method'].choices = dynamic_pay_methods
 
 
-class CourierAssignmentForm(forms.Form):
-    courier = forms.ModelChoiceField(
-        queryset=User.objects.filter(profile__role='COURIER'),
-        required=True,
-        widget=forms.Select(attrs={'class': 'select-control'})
-    )
-    delivery_notes = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={'class': 'input-control', 'rows': 2, 'placeholder': 'Special delivery route notes for courier'})
-    )
-
-
-class CourierDeliveryActionForm(forms.Form):
-    action = forms.ChoiceField(
-        choices=[
-            ('DELIVER', 'Mark as Delivered'),
-            ('FAILED', 'Mark Delivery Attempt Failed'),
-        ],
-        widget=forms.RadioSelect(attrs={'class': 'mr-2'})
-    )
-    receiver_name = forms.CharField(
-        max_length=150,
-        required=False,
-        widget=forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'Name of person receiving the package'})
-    )
-    security_otp = forms.CharField(
-        max_length=6,
-        required=False,
-        widget=forms.TextInput(attrs={'class': 'input-control', 'placeholder': '6-digit OTP provided by recipient'})
-    )
-    delivery_notes = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={'class': 'input-control', 'rows': 2, 'placeholder': 'Proof note, gate code remarks, or reason for failure'})
-    )
-
-
-class TransitManifestForm(forms.ModelForm):
+class ShipmentItemForm(forms.ModelForm):
     class Meta:
-        model = TransitManifest
-        fields = ['origin_branch', 'destination_branch', 'driver_name', 'driver_phone', 'vehicle_plate', 'notes']
+        model = ShipmentItem
+        fields = ['description', 'wrap_type', 'quantity', 'unit_price']
         widgets = {
-            'origin_branch': forms.Select(attrs={'class': 'select-control'}),
-            'destination_branch': forms.Select(attrs={'class': 'select-control'}),
-            'driver_name': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'Driver Full Name'}),
-            'driver_phone': forms.TextInput(attrs={'class': 'input-control', 'placeholder': '+1 (555) 000-0000'}),
-            'vehicle_plate': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'e.g. TRK-4921'}),
-            'notes': forms.Textarea(attrs={'class': 'input-control', 'rows': 2, 'placeholder': 'Trip instructions or route notes'}),
+            'description': forms.TextInput(attrs={'class': 'form-control item-desc', 'placeholder': 'Item description'}),
+            'wrap_type': forms.TextInput(attrs={'class': 'form-control item-wrap', 'placeholder': 'e.g. Box, Sack, Carton'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control item-qty', 'min': 1, 'value': 1}),
+            'unit_price': forms.NumberInput(attrs={'class': 'form-control item-price', 'min': 0, 'step': '0.01', 'value': '0.00'}),
         }
 
+    def clean_quantity(self):
+        qty = self.cleaned_data.get('quantity')
+        if not qty or qty < 1:
+            raise ValidationError("Quantity must be at least 1.")
+        if qty > 10000:
+            raise ValidationError("Quantity cannot exceed 10,000 units.")
+        return qty
 
-class PickupRequestForm(forms.ModelForm):
+    def clean_unit_price(self):
+        price = self.cleaned_data.get('unit_price')
+        if price is None or price < Decimal('0.00'):
+            raise ValidationError("Unit price cannot be negative.")
+        if price > Decimal('10000000.00'):
+            raise ValidationError("Unit price exceeds maximum allowable limit (10,000,000.00).")
+        return price
+
+
+class BaseShipmentItemFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        if any(self.errors):
+            return
+
+        valid_items_count = 0
+        for form in self.forms:
+            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                valid_items_count += 1
+
+        if valid_items_count < 1:
+            raise ValidationError("A shipment must contain at least one valid item.")
+
+
+ShipmentItemFormSet = inlineformset_factory(
+    Parcel,
+    ShipmentItem,
+    form=ShipmentItemForm,
+    formset=BaseShipmentItemFormSet,
+    extra=0,
+    can_delete=True,
+    min_num=1,
+    validate_min=True
+)
+
+
+class DispatchForm(forms.Form):
+    truck_plate_number = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. KAA 123A'}),
+        help_text="Registration plate of the dispatched bus/truck."
+    )
+    driver_name = forms.CharField(
+        max_length=150,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Full Name of Driver'}),
+        help_text="Name of the driver in charge of the vehicle."
+    )
+    note = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Optional dispatch notes'}),
+        help_text="Additional operational remarks."
+    )
+
+
+class ArrivalForm(forms.Form):
+    note = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'e.g. Arrived safely, luggage inspected'}),
+        help_text="Optional arrival notes."
+    )
+
+
+class CollectionForm(forms.Form):
+    collected_by_name = forms.CharField(
+        max_length=150,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Full Name of Collector'}),
+        help_text="Name of individual claiming parcel (must match ID verification)."
+    )
+    note = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Optional collection notes / ID check'}),
+        help_text="Collector notes."
+    )
+
+
+class CancelForm(forms.Form):
+    reason = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Reason for cancellation'}),
+        help_text="Mandatory audit explanation for cancelling this parcel."
+    )
+
+
+class AdminOverrideForm(forms.ModelForm):
+    reason = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Mandatory administrative justification'}),
+        help_text="State why this shipment data is being altered post-dispatch."
+    )
+
     class Meta:
-        model = PickupRequest
+        model = Parcel
         fields = [
-            'customer_name', 'customer_phone', 'customer_email',
-            'pickup_address', 'pickup_city', 'preferred_date',
-            'preferred_time_slot', 'estimated_weight_kg', 'package_description', 'notes'
+            'route', 'truck_plate_number', 'driver_name',
+            'sender_name', 'sender_phone',
+            'receiver_name', 'receiver_phone', 'receiver_id_number',
+            'payment_status', 'payment_method', 'price'
         ]
         widgets = {
-            'customer_name': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'Your Full Name'}),
-            'customer_phone': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'Contact Phone Number'}),
-            'customer_email': forms.EmailInput(attrs={'class': 'input-control', 'placeholder': 'Email Address'}),
-            'pickup_address': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'Complete Street Address / Apt / Floor'}),
-            'pickup_city': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'City'}),
-            'preferred_date': forms.DateInput(attrs={'class': 'input-control', 'type': 'date'}),
-            'preferred_time_slot': forms.Select(attrs={'class': 'select-control'}),
-            'estimated_weight_kg': forms.NumberInput(attrs={'class': 'input-control', 'step': '0.5', 'min': '0.5'}),
-            'package_description': forms.Textarea(attrs={'class': 'input-control', 'rows': 2, 'placeholder': 'Describe items and approximate count'}),
-            'notes': forms.Textarea(attrs={'class': 'input-control', 'rows': 2, 'placeholder': 'Gate code, parking instructions, etc.'}),
+            'route': forms.Select(attrs={'class': 'form-select'}),
+            'truck_plate_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'driver_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'sender_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'sender_phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'receiver_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'receiver_phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'receiver_id_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'payment_status': forms.Select(attrs={'class': 'form-select'}),
+            'payment_method': forms.Select(attrs={'class': 'form-select'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
         }
-
-
-class CustomerInquiryForm(forms.ModelForm):
-    class Meta:
-        model = CustomerInquiry
-        fields = ['name', 'email', 'phone', 'tracking_number', 'subject', 'message']
-        widgets = {
-            'name': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'Your Name'}),
-            'email': forms.EmailInput(attrs={'class': 'input-control', 'placeholder': 'Your Email'}),
-            'phone': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'Your Phone (optional)'}),
-            'tracking_number': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'Tracking Number (if applicable)'}),
-            'subject': forms.TextInput(attrs={'class': 'input-control', 'placeholder': 'Subject of inquiry'}),
-            'message': forms.Textarea(attrs={'class': 'input-control', 'rows': 4, 'placeholder': 'Please provide details of your question or issue...'}),
-        }
-
-
-class InquiryReplyForm(forms.Form):
-    status = forms.ChoiceField(
-        choices=CustomerInquiry.STATUS_CHOICES,
-        widget=forms.Select(attrs={'class': 'select-control'})
-    )
-    staff_reply = forms.CharField(
-        widget=forms.Textarea(attrs={'class': 'input-control', 'rows': 4, 'placeholder': 'Type official response to customer...'})
-    )

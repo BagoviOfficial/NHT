@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block title %}Dynamic Form Configurations — {{ COMPANY_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+  <div>
+    <h3 class="fw-bold mb-1">Dynamic Form Configurations</h3>
+    <p class="text-secondary small mb-0">Customize labels, placeholders, and dropdown choices safely (data-only, no arbitrary code)</p>
+  </div>
+  <div class="d-flex gap-2 mt-2 mt-sm-0">
+    <a href="{% url 'choice_config_create' %}" class="btn btn-primary fw-semibold btn-sm">
+      <i class="bi bi-plus-lg me-1"></i> Add Dropdown Choice
+    </a>
+    <a href="{% url 'admin_panel' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i> Admin Hub
+    </a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Field Configurations -->
+  <div class="col-lg-6">
+    <div class="card card-nht shadow-sm">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-input-cursor-text me-2"></i>Form Field Settings</h5>
+        <span class="badge bg-light text-dark border">{{ field_configs|length }} Fields</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light small text-uppercase text-secondary">
+            <tr>
+              <th>Field Key</th>
+              <th>Display Label</th>
+              <th class="text-center">Req</th>
+              <th class="text-center">Vis</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cfg in field_configs %}
+              <tr>
+                <td>
+                  <code>{{ cfg.field_key }}</code>
+                  {% if cfg.placeholder %}
+                    <small class="text-muted d-block" style="font-size: 0.75rem;">Ph: "{{ cfg.placeholder }}"</small>
+                  {% endif %}
+                </td>
+                <td class="fw-semibold text-dark">{{ cfg.label }}</td>
+                <td class="text-center">
+                  {% if cfg.is_required %}
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                  {% else %}
+                    <i class="bi bi-dash-circle text-muted"></i>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  {% if cfg.is_visible %}
+                    <i class="bi bi-eye-fill text-primary"></i>
+                  {% else %}
+                    <i class="bi bi-eye-slash-fill text-danger"></i>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <a href="{% url 'field_config_edit' cfg.pk %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil"></i> Edit
+                  </a>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="text-center py-3 text-muted">No field configurations created.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Choice Configurations -->
+  <div class="col-lg-6">
+    <div class="card card-nht shadow-sm">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0 text-success"><i class="bi bi-menu-button-wide me-2"></i>Dropdown Choices</h5>
+        <span class="badge bg-light text-dark border">{{ choice_configs|length }} Choices</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light small text-uppercase text-secondary">
+            <tr>
+              <th>Category</th>
+              <th>Choice Label</th>
+              <th>Key</th>
+              <th class="text-center">Status</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in choice_configs %}
+              <tr>
+                <td>
+                  <span class="badge bg-light text-dark border">{{ c.get_category_display }}</span>
+                </td>
+                <td class="fw-semibold text-dark">
+                  {{ c.label }}
+                  {% if c.is_default %}
+                    <span class="badge bg-primary ms-1" style="font-size: 0.65rem;">DEFAULT</span>
+                  {% endif %}
+                </td>
+                <td><code>{{ c.key }}</code></td>
+                <td class="text-center">
+                  {% if c.is_active %}
+                    <span class="badge bg-success-subtle text-success">Active</span>
+                  {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary">Disabled</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <a href="{% url 'choice_config_edit' c.pk %}" class="btn btn-outline-primary">
+                      <i class="bi bi-pencil"></i>
+                    </a>
+                    <form method="post" action="{% url 'choice_config_toggle' c.pk %}" class="d-inline">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-outline-secondary" title="Toggle active status">
+                        {% if c.is_active %}
+                          <i class="bi bi-toggle-on text-success"></i>
+                        {% else %}
+                          <i class="bi bi-toggle-off text-muted"></i>
+                        {% endif %}
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="text-center py-3 text-muted">No dropdown choices configured.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

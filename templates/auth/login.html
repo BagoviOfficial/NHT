@@ -1,86 +1,55 @@
 {% extends 'base.html' %}
 
-{% block title %}Sign In - SwiftParcel PMS{% endblock %}
+{% block title %}Staff Login — {{ COMPANY_NAME }}{% endblock %}
 
 {% block content %}
-<div class="min-h-[75vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-  <div class="max-w-md w-full space-y-8 bg-white p-8 sm:p-10 rounded-2xl shadow-xl border border-slate-100">
-    
-    <!-- Header -->
-    <div class="text-center">
-      <div class="w-14 h-14 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
-        <i data-lucide="shield-check" class="w-8 h-8"></i>
+<div class="row justify-content-center py-5">
+  <div class="col-md-5 col-lg-4">
+    <div class="card card-nht shadow-sm">
+      <div class="card-body p-4">
+        <div class="text-center mb-4">
+          <div class="d-inline-flex p-3 rounded-circle bg-primary bg-opacity-10 text-primary mb-2">
+            <i class="bi bi-shield-lock-fill fs-2"></i>
+          </div>
+          <h4 class="fw-bold mb-1">Staff Portal</h4>
+          <p class="text-muted small">Northern Highways Transporters</p>
+        </div>
+
+        {% if locked %}
+          <div class="alert alert-danger" role="alert">
+            <i class="bi bi-shield-slash-fill me-2"></i>
+            Account access temporarily restricted due to repeated invalid attempts. Please wait 15 minutes.
+          </div>
+        {% else %}
+          <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-secondary">Username or Staff ID</label>
+              {{ form.username }}
+              {% if form.username.errors %}
+                <div class="text-danger small mt-1">{{ form.username.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label small fw-semibold text-secondary">Password</label>
+              {{ form.password }}
+              {% if form.password.errors %}
+                <div class="text-danger small mt-1">{{ form.password.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+              <i class="bi bi-box-arrow-in-right me-1"></i> Sign In to System
+            </button>
+          </form>
+        {% endif %}
+
+        <div class="mt-4 pt-3 border-top text-center text-muted small">
+          <i class="bi bi-lock me-1"></i> Authorised staff access only. Activity is monitored and audited.
+        </div>
       </div>
-      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-        Sign in to your account
-      </h2>
-      <p class="mt-2 text-sm text-slate-500">
-        Access real-time parcel operations, manifests, and deliveries
-      </p>
     </div>
-
-    <!-- Quick Demo Credential Fill Buttons -->
-    <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-      <p class="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2 flex items-center">
-        <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-500 mr-1"></i> Quick Test Accounts (1-Click Fill):
-      </p>
-      <div class="grid grid-cols-2 gap-2 text-xs">
-        <button type="button" onclick="fillCreds('admin', 'admin123')" class="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 text-slate-700 font-medium text-left transition flex items-center justify-between">
-          <span>Admin</span>
-          <span class="text-[10px] text-slate-400">HQ</span>
-        </button>
-        <button type="button" onclick="fillCreds('staff_nyc', 'staff123')" class="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 text-slate-700 font-medium text-left transition flex items-center justify-between">
-          <span>Staff NYC</span>
-          <span class="text-[10px] text-slate-400">Branch</span>
-        </button>
-        <button type="button" onclick="fillCreds('rider_alex', 'rider123')" class="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 text-slate-700 font-medium text-left transition flex items-center justify-between">
-          <span>Courier Alex</span>
-          <span class="text-[10px] text-slate-400">Rider</span>
-        </button>
-        <button type="button" onclick="fillCreds('customer1', 'customer123')" class="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 text-slate-700 font-medium text-left transition flex items-center justify-between">
-          <span>Customer</span>
-          <span class="text-[10px] text-slate-400">Client</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Login Form -->
-    <form class="mt-6 space-y-5" method="POST" action="{% url 'login' %}">
-      {% csrf_token %}
-      
-      <div>
-        <label for="id_username" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Username</label>
-        {{ form.username }}
-      </div>
-
-      <div>
-        <label for="id_password" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Password</label>
-        {{ form.password }}
-      </div>
-
-      <div>
-        <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
-          Sign In to Portal
-        </button>
-      </div>
-    </form>
-
-    <div class="text-center pt-2">
-      <p class="text-xs text-slate-500">
-        New customer? 
-        <a href="{% url 'register' %}" class="font-semibold text-blue-600 hover:text-blue-500">
-          Create a free account &rarr;
-        </a>
-      </p>
-    </div>
-
   </div>
 </div>
-
-<script>
-  function fillCreds(u, p) {
-    document.getElementById('id_username').value = u;
-    document.getElementById('id_password').value = p;
-  }
-</script>
 {% endblock %}

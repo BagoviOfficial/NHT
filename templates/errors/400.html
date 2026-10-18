@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}400 — Bad Request — {{ COMPANY_NAME }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-5 text-center">
+  <div class="col-md-6">
+    <div class="card card-nht p-5 shadow-sm">
+      <div class="d-inline-flex p-3 rounded-circle bg-warning bg-opacity-10 text-warning mx-auto mb-3">
+        <i class="bi bi-exclamation-octagon fs-1"></i>
+      </div>
+      <h2 class="fw-bold text-dark">400 — Bad Request</h2>
+      <p class="text-secondary mb-4">
+        The server could not process your request due to invalid syntax or malformed data.
+      </p>
+      <div>
+        <a href="{% url 'home' %}" class="btn btn-primary fw-semibold px-4">Return Home</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

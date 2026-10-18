@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Install New Client — SaaS Control Hub{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Breadcrumbs & Header -->
+  <div class="mb-4">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'saas_dashboard' %}">SaaS Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Install New Client</li>
+      </ol>
+    </nav>
+    <div class="d-flex align-items-center justify-content-between">
+      <div>
+        <h2 class="fw-bold mb-1"><i class="bi bi-building-add text-warning me-2"></i>Install & Provision New Client</h2>
+        <p class="text-muted mb-0">Establish an isolated enterprise courier workspace from this unified master dashboard.</p>
+      </div>
+      <a href="{% url 'saas_dashboard' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+      </a>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+
+      <!-- Informational Guide Alert -->
+      <div class="alert alert-primary border-primary d-flex align-items-start p-3 mb-4 shadow-sm">
+        <i class="bi bi-info-circle-fill text-primary fs-3 me-3 mt-1"></i>
+        <div>
+          <h6 class="fw-bold mb-1">What Happens During Installation?</h6>
+          <p class="mb-1 small">
+            When you install a client, the platform automatically:
+          </p>
+          <ul class="mb-0 small ps-3">
+            <li>Allocates a dedicated tenant space with strict data isolation.</li>
+            <li>Assigns a unique cryptographic tracking prefix (e.g. <code>TWK-XXXXXXXX</code>).</li>
+            <li>Creates the client's initial <strong>Super Administrator</strong> account.</li>
+            <li>Initializes customized 80mm thermal receipt branding and landscape A4 PDF manifests.</li>
+            <li>Pre-populates default packaging categories (Box, Sack, Carton, Envelope, Crate) and starter transit routes.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card card-nht shadow-sm p-4 p-md-5 mb-5">
+        <form method="post" novalidate id="installClientForm">
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger mb-4">
+              {% for error in form.non_field_errors %}
+                <p class="mb-0"><i class="bi bi-exclamation-triangle-fill me-1"></i> {{ error }}</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <!-- Section 1: Enterprise Information -->
+          <h5 class="fw-bold text-primary mb-3 pb-2 border-bottom">
+            <i class="bi bi-briefcase me-2"></i> 1. Organization & Branding Details
+          </h5>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-12">
+              <label class="form-label fw-semibold" for="{{ form.name.id_for_label }}">
+                Company / Courier Name <span class="text-danger">*</span>
+              </label>
+              {{ form.name }}
+              {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.slug.id_for_label }}">
+                Tenant Subdomain / Slug <span class="text-danger">*</span>
+              </label>
+              {{ form.slug }}
+              <small class="text-muted d-block mt-1">{{ form.slug.help_text }}</small>
+              {% if form.slug.errors %}<div class="text-danger small mt-1">{{ form.slug.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.tracking_prefix.id_for_label }}">
+                Tracking Number Prefix <span class="text-danger">*</span>
+              </label>
+              {{ form.tracking_prefix }}
+              <small class="text-muted d-block mt-1">{{ form.tracking_prefix.help_text }}</small>
+              {% if form.tracking_prefix.errors %}<div class="text-danger small mt-1">{{ form.tracking_prefix.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold" for="{{ form.head_office.id_for_label }}">
+                Head Office / Origin Terminal
+              </label>
+              {{ form.head_office }}
+              {% if form.head_office.errors %}<div class="text-danger small mt-1">{{ form.head_office.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold" for="{{ form.currency.id_for_label }}">
+                Currency Code (ISO)
+              </label>
+              {{ form.currency }}
+              {% if form.currency.errors %}<div class="text-danger small mt-1">{{ form.currency.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold" for="{{ form.plan.id_for_label }}">
+                Subscription Tier Plan
+              </label>
+              {{ form.plan }}
+              {% if form.plan.errors %}<div class="text-danger small mt-1">{{ form.plan.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.support_phone.id_for_label }}">
+                Customer Care Hotline
+              </label>
+              {{ form.support_phone }}
+              {% if form.support_phone.errors %}<div class="text-danger small mt-1">{{ form.support_phone.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.support_email.id_for_label }}">
+                Support Email
+              </label>
+              {{ form.support_email }}
+              {% if form.support_email.errors %}<div class="text-danger small mt-1">{{ form.support_email.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.primary_color.id_for_label }}">
+                Primary Brand Color
+              </label>
+              <div class="d-flex align-items-center gap-2">
+                {{ form.primary_color }}
+                <span class="text-muted small">Navbars, headers & buttons</span>
+              </div>
+              {% if form.primary_color.errors %}<div class="text-danger small mt-1">{{ form.primary_color.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.accent_color.id_for_label }}">
+                Accent / Highlight Color
+              </label>
+              <div class="d-flex align-items-center gap-2">
+                {{ form.accent_color }}
+                <span class="text-muted small">Badges & highlights</span>
+              </div>
+              {% if form.accent_color.errors %}<div class="text-danger small mt-1">{{ form.accent_color.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-12">
+              <label class="form-label fw-semibold" for="{{ form.starter_routes.id_for_label }}">
+                Starter Destination Routes (Optional)
+              </label>
+              {{ form.starter_routes }}
+              <small class="text-muted d-block mt-1">{{ form.starter_routes.help_text }}</small>
+              {% if form.starter_routes.errors %}<div class="text-danger small mt-1">{{ form.starter_routes.errors.0 }}</div>{% endif %}
+            </div>
+          </div>
+
+          <!-- Section 2: Initial Super Administrator -->
+          <h5 class="fw-bold text-primary mb-3 pb-2 border-bottom">
+            <i class="bi bi-person-badge me-2"></i> 2. Client Super Administrator Credentials
+          </h5>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.admin_username.id_for_label }}">
+                Admin Username <span class="text-danger">*</span>
+              </label>
+              {{ form.admin_username }}
+              {% if form.admin_username.errors %}<div class="text-danger small mt-1">{{ form.admin_username.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.admin_phone.id_for_label }}">
+                Admin Phone Number <span class="text-danger">*</span>
+              </label>
+              {{ form.admin_phone }}
+              {% if form.admin_phone.errors %}<div class="text-danger small mt-1">{{ form.admin_phone.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.admin_first_name.id_for_label }}">
+                First Name
+              </label>
+              {{ form.admin_first_name }}
+              {% if form.admin_first_name.errors %}<div class="text-danger small mt-1">{{ form.admin_first_name.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.admin_last_name.id_for_label }}">
+                Last Name
+              </label>
+              {{ form.admin_last_name }}
+              {% if form.admin_last_name.errors %}<div class="text-danger small mt-1">{{ form.admin_last_name.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.admin_email.id_for_label }}">
+                Admin Email <span class="text-danger">*</span>
+              </label>
+              {{ form.admin_email }}
+              {% if form.admin_email.errors %}<div class="text-danger small mt-1">{{ form.admin_email.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.admin_password.id_for_label }}">
+                Initial Password
+              </label>
+              {{ form.admin_password }}
+              <small class="text-muted d-block mt-1">{{ form.admin_password.help_text }}</small>
+              {% if form.admin_password.errors %}<div class="text-danger small mt-1">{{ form.admin_password.errors.0 }}</div>{% endif %}
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="d-flex flex-wrap justify-content-end gap-2 pt-3 border-top">
+            <a href="{% url 'saas_dashboard' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+            <button type="submit" class="btn btn-warning fw-bold px-4 py-2">
+              <i class="bi bi-check-circle-fill me-1"></i> Complete Installation & Provision
+            </button>
+          </div>
+
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Dynamic slug and prefix suggestion from company name
+  const nameInput = document.getElementById("{{ form.name.id_for_label }}");
+  const slugInput = document.getElementById("{{ form.slug.id_for_label }}");
+  const prefixInput = document.getElementById("{{ form.tracking_prefix.id_for_label }}");
+  const userAdminInput = document.getElementById("{{ form.admin_username.id_for_label }}");
+
+  if (nameInput) {
+    nameInput.addEventListener("input", function() {
+      const val = this.value.trim();
+      if (!slugInput.value || slugInput.dataset.autoModified === "true") {
+        const slug = val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        slugInput.value = slug;
+        slugInput.dataset.autoModified = "true";
+      }
+      if (!prefixInput.value || prefixInput.dataset.autoModified === "true") {
+        const words = val.split(/\s+/);
+        let prefix = "";
+        if (words.length >= 3) {
+          prefix = (words[0][0] + words[1][0] + words[2][0]).toUpperCase();
+        } else if (words.length === 2) {
+          prefix = (words[0].substring(0, 2) + words[1][0]).toUpperCase();
+        } else if (val.length >= 3) {
+          prefix = val.substring(0, 3).toUpperCase();
+        }
+        prefixInput.value = prefix;
+        prefixInput.dataset.autoModified = "true";
+      }
+      if (!userAdminInput.value || userAdminInput.dataset.autoModified === "true") {
+        const slug = slugInput.value;
+        if (slug) {
+          userAdminInput.value = slug + "_admin";
+          userAdminInput.dataset.autoModified = "true";
+        }
+      }
+    });
+
+    [slugInput, prefixInput, userAdminInput].forEach(inp => {
+      if (inp) {
+        inp.addEventListener("change", function() {
+          this.dataset.autoModified = "false";
+        });
+      }
+    });
+  }
+</script>
+{% endblock %}

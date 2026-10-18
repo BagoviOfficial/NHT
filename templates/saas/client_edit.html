@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Client: {{ tenant.name }} — SaaS Hub{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <div class="mb-4">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'saas_dashboard' %}">SaaS Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'saas_client_detail' tenant.slug %}">{{ tenant.name }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Edit Configuration</li>
+      </ol>
+    </nav>
+    <h2 class="fw-bold mb-1"><i class="bi bi-gear-fill text-primary me-2"></i>Edit Client Configuration</h2>
+    <p class="text-muted">Modify organizational parameters, operational limits, and thermal receipt branding.</p>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="card card-nht shadow-sm p-4 p-md-5 mb-5">
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger mb-4">
+              {% for error in form.non_field_errors %}
+                <p class="mb-0">{{ error }}</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <h5 class="fw-bold text-primary mb-3 pb-2 border-bottom">Organization Profile</h5>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.name.id_for_label }}">Company Name</label>
+              {{ form.name }}
+              {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold" for="{{ form.head_office.id_for_label }}">Head Office Hub</label>
+              {{ form.head_office }}
+              {% if form.head_office.errors %}<div class="text-danger small mt-1">{{ form.head_office.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold" for="{{ form.currency.id_for_label }}">Currency (ISO)</label>
+              {{ form.currency }}
+              {% if form.currency.errors %}<div class="text-danger small mt-1">{{ form.currency.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.support_phone.id_for_label }}">Support Phone</label>
+              {{ form.support_phone }}
+              {% if form.support_phone.errors %}<div class="text-danger small mt-1">{{ form.support_phone.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.support_email.id_for_label }}">Support Email</label>
+              {{ form.support_email }}
+              {% if form.support_email.errors %}<div class="text-danger small mt-1">{{ form.support_email.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.primary_color.id_for_label }}">Primary Brand Color</label>
+              <div class="d-flex align-items-center gap-2">
+                {{ form.primary_color }}
+                <span class="text-muted small">Navbars, headers & buttons</span>
+              </div>
+              {% if form.primary_color.errors %}<div class="text-danger small mt-1">{{ form.primary_color.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.accent_color.id_for_label }}">Accent / Highlight Color</label>
+              <div class="d-flex align-items-center gap-2">
+                {{ form.accent_color }}
+                <span class="text-muted small">Badges & highlights</span>
+              </div>
+              {% if form.accent_color.errors %}<div class="text-danger small mt-1">{{ form.accent_color.errors.0 }}</div>{% endif %}
+            </div>
+          </div>
+
+          <h5 class="fw-bold text-primary mb-3 pb-2 border-bottom">Plan & Operational Limits</h5>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold" for="{{ form.plan.id_for_label }}">Subscription Tier</label>
+              {{ form.plan }}
+              {% if form.plan.errors %}<div class="text-danger small mt-1">{{ form.plan.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold" for="{{ form.status.id_for_label }}">Status</label>
+              {{ form.status }}
+              {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-4 d-flex align-items-center pt-4">
+              <div class="form-check form-switch">
+                {{ form.is_active }}
+                <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">Active Portal</label>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold" for="{{ form.max_users.id_for_label }}">Max Staff Accounts</label>
+              {{ form.max_users }}
+              {% if form.max_users.errors %}<div class="text-danger small mt-1">{{ form.max_users.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold" for="{{ form.max_routes.id_for_label }}">Max Transit Routes</label>
+              {{ form.max_routes }}
+              {% if form.max_routes.errors %}<div class="text-danger small mt-1">{{ form.max_routes.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold" for="{{ form.tracking_rate_limit_per_minute.id_for_label }}">Tracking Rate Limit / min</label>
+              {{ form.tracking_rate_limit_per_minute }}
+              {% if form.tracking_rate_limit_per_minute.errors %}<div class="text-danger small mt-1">{{ form.tracking_rate_limit_per_minute.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-12">
+              <div class="form-check form-switch">
+                {{ form.allow_superuser_edit_after_dispatch }}
+                <label class="form-check-label fw-semibold" for="{{ form.allow_superuser_edit_after_dispatch.id_for_label }}">
+                  Allow Client Super Admin post-dispatch edit with audit reason
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <h5 class="fw-bold text-primary mb-3 pb-2 border-bottom">Thermal Receipt Customization</h5>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.receipt_header.id_for_label }}">80mm Receipt Header Text</label>
+              {{ form.receipt_header }}
+              {% if form.receipt_header.errors %}<div class="text-danger small mt-1">{{ form.receipt_header.errors.0 }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ form.receipt_footer.id_for_label }}">80mm Receipt Footer / Terms</label>
+              {{ form.receipt_footer }}
+              {% if form.receipt_footer.errors %}<div class="text-danger small mt-1">{{ form.receipt_footer.errors.0 }}</div>{% endif %}
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+            <a href="{% url 'saas_client_detail' tenant.slug %}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary fw-bold px-4">
+              <i class="bi bi-save me-1"></i> Save Changes
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

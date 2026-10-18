@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}500 — Server Error — {{ COMPANY_NAME }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-5 text-center">
+  <div class="col-md-6">
+    <div class="card card-nht p-5 shadow-sm border-danger">
+      <div class="d-inline-flex p-3 rounded-circle bg-danger bg-opacity-10 text-danger mx-auto mb-3">
+        <i class="bi bi-gear-wide-connected fs-1"></i>
+      </div>
+      <h2 class="fw-bold text-dark">500 — Internal Server Error</h2>
+      <p class="text-secondary mb-4">
+        An unexpected error occurred while processing your request. The technical team has been notified.
+      </p>
+      <div>
+        <a href="{% url 'home' %}" class="btn btn-primary fw-semibold px-4">Return Home</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

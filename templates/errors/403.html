@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}403 — Access Denied — {{ COMPANY_NAME }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-5 text-center">
+  <div class="col-md-6">
+    <div class="card card-nht p-5 shadow-sm border-danger">
+      <div class="d-inline-flex p-3 rounded-circle bg-danger bg-opacity-10 text-danger mx-auto mb-3">
+        <i class="bi bi-shield-x fs-1"></i>
+      </div>
+      <h2 class="fw-bold text-dark">403 — Access Denied</h2>
+      <p class="text-secondary mb-3">
+        {{ message|default:"You do not have the required operational permissions or branch route assignment to access this resource." }}
+      </p>
+      <div class="d-flex justify-content-center gap-2">
+        <a href="{% url 'dashboard' %}" class="btn btn-primary fw-semibold px-4">Dashboard</a>
+        <a href="{% url 'home' %}" class="btn btn-outline-secondary px-4">Home</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

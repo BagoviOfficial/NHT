@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receipt — {{ parcel.tracking_number }} — {{ COMPANY_NAME }}</title>
+  <style>
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      width: 80mm;
+      margin: 0 auto;
+      padding: 4mm 4mm;
+      font-family: "Courier New", Courier, monospace, monospace;
+      font-size: 11px;
+      line-height: 1.35;
+      color: #000;
+      background: #fff;
+    }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .text-left { text-align: left; }
+    .bold { font-weight: bold; }
+    .uppercase { text-transform: uppercase; }
+
+    .header-box {
+      border-bottom: 1px dashed #000;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+    }
+    .company-title {
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+    .tracking-box {
+      border: 2px solid #000;
+      padding: 4px;
+      margin: 6px 0;
+      text-align: center;
+    }
+    .tracking-code {
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+    .qr-container {
+      margin: 8px auto;
+      text-align: center;
+      width: 140px;
+      height: 140px;
+    }
+    .qr-container svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .dashed-line {
+      border-top: 1px dashed #000;
+      margin: 5px 0;
+    }
+    .double-line {
+      border-top: 2px solid #000;
+      margin: 6px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5px;
+    }
+    table th {
+      border-bottom: 1px solid #000;
+      padding: 2px 0;
+    }
+    table td {
+      padding: 2px 0;
+      vertical-align: top;
+    }
+    .actions-bar {
+      margin-bottom: 10px;
+      text-align: center;
+      padding: 8px;
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+    .btn-print {
+      background: #0d47a1;
+      color: #fff;
+      border: none;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    @media print {
+      .actions-bar {
+        display: none !important;
+      }
+      body {
+        padding: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Screen-only print trigger button -->
+  <div class="actions-bar">
+    <button class="btn-print" onclick="window.print()">Print 80mm Thermal Receipt</button>
+  </div>
+
+  <!-- Header -->
+  <div class="header-box text-center">
+    <div class="company-title uppercase">{{ COMPANY_NAME }}</div>
+    <div style="white-space: pre-line; font-size: 10px;">{{ SITE_SETTINGS.receipt_header }}</div>
+    <div>Hotline: {{ SUPPORT_PHONE }}</div>
+    <div>Date: {{ parcel.created_at|date:"Y-m-d H:i" }}</div>
+  </div>
+
+  <!-- Tracking Box -->
+  <div class="tracking-box">
+    <div style="font-size: 9px; text-transform: uppercase;">Tracking Number</div>
+    <div class="tracking-code">{{ parcel.tracking_number }}</div>
+  </div>
+
+  <!-- Server-Generated QR Code linking strictly to public tracking URL -->
+  <div class="qr-container" title="Scan to track parcel">
+    {{ qr_svg|safe }}
+  </div>
+  <div class="text-center" style="font-size: 9px; margin-bottom: 6px;">
+    Public Tracking URL:<br>
+    <a href="{{ tracking_url }}" style="color: #000; text-decoration: none;">{{ tracking_url }}</a>
+  </div>
+
+  <div class="dashed-line"></div>
+
+  <!-- Route & Vehicle Details -->
+  <div>
+    <div><strong>ORIGIN:</strong> {{ SITE_SETTINGS.head_office }}</div>
+    <div><strong>DESTINATION:</strong> {{ parcel.route.name }}</div>
+    {% if parcel.truck_plate_number %}
+      <div><strong>VEHICLE:</strong> {{ parcel.truck_plate_number }}</div>
+      <div><strong>DRIVER:</strong> {{ parcel.driver_name }}</div>
+    {% endif %}
+  </div>
+
+  <div class="dashed-line"></div>
+
+  <!-- Sender & Receiver -->
+  <div>
+    <div><strong>SENDER:</strong> {{ parcel.sender_name }}</div>
+    <div>Phone: {{ parcel.sender_phone }}</div>
+    <div style="margin-top: 3px;"><strong>RECEIVER:</strong> {{ parcel.receiver_name }}</div>
+    <div>Phone: {{ parcel.receiver_phone }}</div>
+    <div>National ID: {{ parcel.receiver_id_number }}</div>
+  </div>
+
+  <div class="dashed-line"></div>
+
+  <!-- Consignment Items Table -->
+  <table>
+    <thead>
+      <tr>
+        <th class="text-left">Item / Wrap</th>
+        <th class="text-center">Qty</th>
+        <th class="text-right">Price</th>
+        <th class="text-right">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+        <tr>
+          <td class="text-left">{{ item.description }}<br><small>({{ item.wrap_type }})</small></td>
+          <td class="text-center">{{ item.quantity }}</td>
+          <td class="text-right">{{ item.unit_price|floatformat:2 }}</td>
+          <td class="text-right">{{ item.line_total|floatformat:2 }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="double-line"></div>
+
+  <!-- Financial Summary -->
+  <table>
+    <tr>
+      <td class="bold">FINAL TOTAL:</td>
+      <td class="bold text-right" style="font-size: 13px;">{{ CURRENCY }} {{ parcel.price|floatformat:2 }}</td>
+    </tr>
+    <tr>
+      <td>Payment Status:</td>
+      <td class="text-right bold">{{ parcel.get_payment_status_display }}</td>
+    </tr>
+    <tr>
+      <td>Payment Method:</td>
+      <td class="text-right">{{ parcel.get_payment_method_display }}</td>
+    </tr>
+  </table>
+
+  <div class="dashed-line"></div>
+
+  <!-- Receipt Footer -->
+  <div class="text-center" style="font-size: 9.5px; margin-top: 6px; white-space: pre-line;">
+    {{ SITE_SETTINGS.receipt_footer }}
+  </div>
+
+  <div class="dashed-line"></div>
+
+  <!-- Mandatory Footer Credit (Section 38) -->
+  <div class="text-center bold" style="font-size: 8.5px; margin-top: 5px;">
+    Powered by BAGOVI TECHNOLOGIES — https://bagovi.com/
+  </div>
+
+</body>
+</html>

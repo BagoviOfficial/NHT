@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}Audit Trail — {{ COMPANY_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+  <div>
+    <h3 class="fw-bold mb-1">Security & Operational Audit Trail</h3>
+    <p class="text-secondary small mb-0">Permanent, tamper-evident log of authentication, parcel state changes, and overrides</p>
+  </div>
+  <a href="{% url 'admin_panel' %}" class="btn btn-outline-secondary btn-sm mt-2 mt-sm-0">
+    <i class="bi bi-arrow-left me-1"></i> Admin Hub
+  </a>
+</div>
+
+<!-- Filters -->
+<div class="card card-nht p-3 mb-4 shadow-sm">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-4 col-sm-6">
+      <label class="form-label small fw-semibold text-secondary">Search Identifier / Note</label>
+      <input type="text" name="q" value="{{ search_query|default:'' }}" class="form-control form-control-sm" placeholder="e.g. NHT-..., username, reason">
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+      <label class="form-label small fw-semibold text-secondary">Action</label>
+      <select name="action" class="form-select form-select-sm">
+        <option value="">-- All Actions --</option>
+        {% for act in distinct_actions %}
+          <option value="{{ act }}" {% if action_filter == act %}selected{% endif %}>{{ act }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+      <label class="form-label small fw-semibold text-secondary">Actor Username</label>
+      <input type="text" name="actor" value="{{ actor_filter|default:'' }}" class="form-control form-control-sm" placeholder="e.g. admin, ops_manager">
+    </div>
+
+    <div class="col-md-2 col-sm-6 d-flex gap-1">
+      <button type="submit" class="btn btn-primary btn-sm w-100 fw-semibold">Filter</button>
+      <a href="{% url 'admin_panel_audit' %}" class="btn btn-light btn-sm border">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- Audit Log Table -->
+<div class="card card-nht shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover table-sm align-middle mb-0" style="font-size: 0.85rem;">
+      <thead class="table-light small text-uppercase text-secondary">
+        <tr>
+          <th>Timestamp</th>
+          <th>Actor</th>
+          <th>Action</th>
+          <th>Target</th>
+          <th>Client IP</th>
+          <th>Reason / Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in page_obj %}
+          <tr>
+            <td class="text-nowrap text-secondary">{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+            <td>
+              {% if log.actor %}
+                <span class="fw-semibold text-dark">{{ log.actor.username }}</span>
+                <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">{{ log.actor.role }}</span>
+              {% else %}
+                <span class="text-muted italic">Anonymous / System</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge {% if 'FAIL' in log.action or 'CANCEL' in log.action %}bg-danger{% elif 'OVERRIDE' in log.action %}bg-warning text-dark{% elif 'LOGIN' in log.action or 'CREATE' in log.action %}bg-primary{% else %}bg-secondary{% endif %}">
+                {{ log.action }}
+              </span>
+            </td>
+            <td>
+              <code>{{ log.object_type }}:{{ log.object_identifier }}</code>
+            </td>
+            <td class="text-muted">{{ log.ip_address|default:"-" }}</td>
+            <td>
+              <div class="text-dark">{{ log.reason|default:"-" }}</div>
+              {% if log.old_values or log.new_values %}
+                <small class="text-muted d-block">
+                  {% if log.old_values %}<strong>Old:</strong> {{ log.old_values }} {% endif %}
+                  {% if log.new_values %}<strong>New:</strong> {{ log.new_values }}{% endif %}
+                </small>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="text-center py-4 text-muted">No audit entries found.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2">
+      <span class="small text-muted">
+        Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} audit entries
+      </span>
+      <nav>
+        <ul class="pagination pagination-sm mb-0">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}&action={{ action_filter }}&actor={{ actor_filter }}&q={{ search_query }}">Previous</a>
+            </li>
+          {% endif %}
+          <li class="page-item active">
+            <span class="page-link">{{ page_obj.number }}</span>
+          </li>
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}&action={{ action_filter }}&actor={{ actor_filter }}&q={{ search_query }}">Next</a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

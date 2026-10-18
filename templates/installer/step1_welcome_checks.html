@@ -1,0 +1,613 @@
+{% extends "installer/base_installer.html" %}
+
+{% block title %}Installation Wizard — Parcel Management System{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <div class="d-flex align-items-center justify-content-between">
+    <div>
+      <h3 class="fw-bold mb-1">Welcome to the 5-Minute Installation</h3>
+      <p class="text-secondary mb-0">
+        Fill in the parameters below to initialize your global superadmin account, database schema, and launch your first courier organization.
+      </p>
+    </div>
+    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill d-none d-sm-inline-block">
+      <i class="bi bi-magic me-1"></i> Fast Setup
+    </span>
+  </div>
+</div>
+
+<!-- Step Progress Indicators -->
+<div class="row g-2 mb-4 text-center">
+  <div class="col-3">
+    <div class="p-2 rounded bg-light border border-primary text-primary fw-bold small">
+      <span class="badge bg-primary me-1">1</span> Readiness
+    </div>
+  </div>
+  <div class="col-3">
+    <div class="p-2 rounded bg-light border text-muted small">
+      <span class="badge bg-secondary me-1">2</span> Platform
+    </div>
+  </div>
+  <div class="col-3">
+    <div class="p-2 rounded bg-light border text-muted small">
+      <span class="badge bg-secondary me-1">3</span> Organization
+    </div>
+  </div>
+  <div class="col-3">
+    <div class="p-2 rounded bg-light border text-muted small">
+      <span class="badge bg-secondary me-1">4</span> Launch
+    </div>
+  </div>
+</div>
+
+<!-- Pre-Flight Readiness Diagnostics -->
+<div class="card mb-4 border-0 shadow-sm" style="background-color: #f8fafc; border: 1px solid #e2e8f0 !important; border-radius: 8px;">
+  <div class="card-body p-3">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <h6 class="fw-bold mb-0 text-dark">
+        <i class="bi bi-cpu text-primary me-1"></i> Pre-Flight Environment Diagnostics
+      </h6>
+      <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRefreshDiagnostics" title="Re-check environment status without reloading page">
+          <i class="bi bi-arrow-clockwise"></i> Re-check
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#dbAssistantCollapse" aria-expanded="false" aria-controls="dbAssistantCollapse">
+          <i class="bi bi-database-gear me-1"></i> DB Assistant
+        </button>
+        <span id="readinessBadge">
+          {% if readiness.all_passed %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+              <i class="bi bi-check-circle-fill me-1"></i> System Ready
+            </span>
+          {% else %}
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i> Action Required
+            </span>
+          {% endif %}
+        </span>
+      </div>
+    </div>
+
+    <!-- Live Diagnostics Table -->
+    <div class="table-responsive">
+      <table class="table table-sm table-borderless align-middle mb-0" id="diagnosticsTable">
+        <tbody>
+          {% for check in readiness.checks %}
+            <tr class="border-bottom border-light">
+              <td class="py-2" style="width: 32%;">
+                <span class="fw-semibold text-dark">{{ check.name }}</span>
+                <div class="small text-muted">{{ check.required }}</div>
+              </td>
+              <td class="py-2">
+                <span class="small font-monospace text-secondary">{{ check.current }}</span>
+                <div class="small text-muted">{{ check.details }}</div>
+              </td>
+              <td class="py-2 text-end" style="width: 15%;">
+                {% if check.passed %}
+                  <span class="check-badge check-badge-pass">
+                    <i class="bi bi-check-lg"></i> OK
+                  </span>
+                {% else %}
+                  <span class="check-badge check-badge-fail">
+                    <i class="bi bi-x-lg"></i> FAIL
+                  </span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Interactive Database Connection Assistant (Collapse) -->
+    <div class="collapse mt-3" id="dbAssistantCollapse">
+      <div class="card card-body bg-white border border-secondary-subtle p-3">
+        <h6 class="fw-bold mb-1 text-dark">
+          <i class="bi bi-database-check text-primary me-1"></i> Database Connection Assistant
+        </h6>
+        <p class="small text-muted mb-3">
+          Test or reconfigure your PostgreSQL database connection before running the installation wizard (similar to WordPress <code>wp-config.php</code> setup).
+        </p>
+
+        <div class="row g-2 mb-2">
+          <div class="col-md-3">
+            <label class="form-label small mb-1">Engine</label>
+            <select class="form-select form-select-sm" id="dbTestEngine">
+              <option value="postgresql" selected>PostgreSQL</option>
+              <option value="sqlite">SQLite</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-1">DB Name</label>
+            <input type="text" class="form-control form-control-sm" id="dbTestName" placeholder="parcel_db" value="parcel_db">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-1">User</label>
+            <input type="text" class="form-control form-control-sm" id="dbTestUser" placeholder="postgres" value="postgres">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-1">Password</label>
+            <input type="password" class="form-control form-control-sm" id="dbTestPassword" placeholder="(empty or password)">
+          </div>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label small mb-1">Host</label>
+            <input type="text" class="form-control form-control-sm" id="dbTestHost" placeholder="localhost" value="localhost">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-1">Port</label>
+            <input type="text" class="form-control form-control-sm" id="dbTestPort" placeholder="5432" value="5432">
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check mb-1">
+              <input class="form-check-input" type="checkbox" id="dbSaveEnv" checked>
+              <label class="form-check-label small" for="dbSaveEnv">Save to .env</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" class="btn btn-sm btn-primary" id="btnRunDbTest">
+            <i class="bi bi-play-circle me-1"></i> Test Connection
+          </button>
+          <div id="dbTestResult" class="small"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if not readiness.all_passed %}
+  <div class="alert alert-warning mb-4" role="alert">
+    <i class="bi bi-exclamation-circle-fill me-1"></i>
+    <strong>Notice:</strong> One or more pre-flight checks flagged an issue. Please ensure PostgreSQL or SQLite is accessible before submitting.
+  </div>
+{% endif %}
+
+<!-- Installation Form -->
+<form method="post" id="installerForm" novalidate>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger mb-4">
+      {% for error in form.non_field_errors %}
+        <div><i class="bi bi-exclamation-triangle me-1"></i> {{ error }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- 1. Platform Settings -->
+  <div class="section-title">
+    <i class="bi bi-globe2 text-primary"></i> 1. Platform Settings
+  </div>
+
+  <div class="mb-3">
+    <label for="{{ form.platform_title.id_for_label }}" class="form-label">
+      {{ form.platform_title.label }} <span class="text-danger">*</span>
+    </label>
+    {{ form.platform_title }}
+    {% if form.platform_title.errors %}
+      <div class="text-danger small mt-1">{{ form.platform_title.errors.0 }}</div>
+    {% endif %}
+    <div class="form-text">The title of your logistics installation, displayed across page titles and headers.</div>
+  </div>
+
+  <!-- 2. SaaS Super Admin Account -->
+  <div class="section-title">
+    <i class="bi bi-shield-lock text-primary"></i> 2. Platform Super Administrator
+  </div>
+  <p class="text-muted small mb-3">
+    This account has platform-wide superadmin privileges to oversee all client organizations, view global audit trails, and manage SaaS subscriptions.
+  </p>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <label for="{{ form.admin_username.id_for_label }}" class="form-label">
+        {{ form.admin_username.label }} <span class="text-danger">*</span>
+      </label>
+      {{ form.admin_username }}
+      {% if form.admin_username.errors %}
+        <div class="text-danger small mt-1">{{ form.admin_username.errors.0 }}</div>
+      {% endif %}
+      <div class="form-text">{{ form.admin_username.help_text }}</div>
+    </div>
+    <div class="col-md-6">
+      <label for="{{ form.admin_phone.id_for_label }}" class="form-label">
+        {{ form.admin_phone.label }} <span class="text-danger">*</span>
+      </label>
+      {{ form.admin_phone }}
+      {% if form.admin_phone.errors %}
+        <div class="text-danger small mt-1">{{ form.admin_phone.errors.0 }}</div>
+      {% endif %}
+      <div class="form-text">{{ form.admin_phone.help_text }}</div>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label for="{{ form.admin_email.id_for_label }}" class="form-label">
+      {{ form.admin_email.label }} <span class="text-danger">*</span>
+    </label>
+    {{ form.admin_email }}
+    {% if form.admin_email.errors %}
+      <div class="text-danger small mt-1">{{ form.admin_email.errors.0 }}</div>
+    {% endif %}
+    <div class="form-text">{{ form.admin_email.help_text }}</div>
+  </div>
+
+  <div class="row g-3 mb-2">
+    <div class="col-md-6">
+      <div class="d-flex align-items-center justify-content-between mb-1">
+        <label for="{{ form.admin_password.id_for_label }}" class="form-label mb-0">
+          {{ form.admin_password.label }} <span class="text-danger">*</span>
+        </label>
+        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" id="btnGenPassword" style="font-size: 0.8rem;">
+          <i class="bi bi-dice-5 me-1"></i> Generate Strong
+        </button>
+      </div>
+      <div class="input-group">
+        {{ form.admin_password }}
+        <button class="btn btn-outline-secondary toggle-pwd" type="button" data-target="{{ form.admin_password.id_for_label }}" title="Toggle password visibility">
+          <i class="bi bi-eye"></i>
+        </button>
+      </div>
+      {% if form.admin_password.errors %}
+        <div class="text-danger small mt-1">{{ form.admin_password.errors.0 }}</div>
+      {% endif %}
+      <!-- Password Strength Meter -->
+      <div class="progress mt-2" style="height: 5px;">
+        <div class="progress-bar" id="pwdStrengthBar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mt-1">
+        <span class="small text-muted" id="pwdStrengthLabel">Strength: Enter a password</span>
+        <span class="small text-muted">Min 8 characters</span>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <label for="{{ form.confirm_password.id_for_label }}" class="form-label">
+        {{ form.confirm_password.label }} <span class="text-danger">*</span>
+      </label>
+      <div class="input-group">
+        {{ form.confirm_password }}
+        <button class="btn btn-outline-secondary toggle-pwd" type="button" data-target="{{ form.confirm_password.id_for_label }}" title="Toggle password visibility">
+          <i class="bi bi-eye"></i>
+        </button>
+      </div>
+      {% if form.confirm_password.errors %}
+        <div class="text-danger small mt-1">{{ form.confirm_password.errors.0 }}</div>
+      {% endif %}
+      <div class="form-text mt-1">Re-enter the identical password.</div>
+    </div>
+  </div>
+
+  <!-- 3. Primary Client Enterprise -->
+  <div class="section-title mt-4">
+    <i class="bi bi-building text-primary"></i> 3. Primary Courier Organization
+  </div>
+  <p class="text-muted small mb-3">
+    The initial logistics company or tenant created on your system. Additional courier enterprises can be registered later via the SaaS Admin Panel.
+  </p>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-8">
+      <label for="{{ form.company_name.id_for_label }}" class="form-label">
+        {{ form.company_name.label }} <span class="text-danger">*</span>
+      </label>
+      {{ form.company_name }}
+      {% if form.company_name.errors %}
+        <div class="text-danger small mt-1">{{ form.company_name.errors.0 }}</div>
+      {% endif %}
+    </div>
+    <div class="col-md-4">
+      <label for="{{ form.tracking_prefix.id_for_label }}" class="form-label">
+        {{ form.tracking_prefix.label }} <span class="text-danger">*</span>
+      </label>
+      {{ form.tracking_prefix }}
+      {% if form.tracking_prefix.errors %}
+        <div class="text-danger small mt-1">{{ form.tracking_prefix.errors.0 }}</div>
+      {% endif %}
+      <div class="form-text">{{ form.tracking_prefix.help_text }}</div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <label for="{{ form.slug.id_for_label }}" class="form-label">
+        {{ form.slug.label }}
+      </label>
+      {{ form.slug }}
+      {% if form.slug.errors %}
+        <div class="text-danger small mt-1">{{ form.slug.errors.0 }}</div>
+      {% endif %}
+      <div class="form-text">Auto-generated from name if left blank.</div>
+    </div>
+    <div class="col-md-5">
+      <label for="{{ form.head_office.id_for_label }}" class="form-label">
+        {{ form.head_office.label }} <span class="text-danger">*</span>
+      </label>
+      {{ form.head_office }}
+      {% if form.head_office.errors %}
+        <div class="text-danger small mt-1">{{ form.head_office.errors.0 }}</div>
+      {% endif %}
+    </div>
+    <div class="col-md-3">
+      <label for="{{ form.currency.id_for_label }}" class="form-label">
+        {{ form.currency.label }} <span class="text-danger">*</span>
+      </label>
+      {{ form.currency }}
+      {% if form.currency.errors %}
+        <div class="text-danger small mt-1">{{ form.currency.errors.0 }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <label for="{{ form.primary_color.id_for_label }}" class="form-label">
+        {{ form.primary_color.label }}
+      </label>
+      <div class="d-flex align-items-center gap-2">
+        {{ form.primary_color }}
+        <span class="small text-muted">Navbar, buttons, brand theme</span>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <label for="{{ form.accent_color.id_for_label }}" class="form-label">
+        {{ form.accent_color.label }}
+      </label>
+      <div class="d-flex align-items-center gap-2">
+        {{ form.accent_color }}
+        <span class="small text-muted">Badges, highlights, active accents</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-4">
+    <label for="{{ form.starter_routes.id_for_label }}" class="form-label">
+      {{ form.starter_routes.label }}
+    </label>
+    {{ form.starter_routes }}
+    {% if form.starter_routes.errors %}
+      <div class="text-danger small mt-1">{{ form.starter_routes.errors.0 }}</div>
+    {% endif %}
+    <div class="form-text">{{ form.starter_routes.help_text }}</div>
+  </div>
+
+  <div class="d-flex align-items-center justify-content-between pt-3 border-top">
+    <a href="{% url 'installer_health_check' %}" target="_blank" class="text-muted small text-decoration-none">
+      <i class="bi bi-activity me-1"></i> Live Diagnostics JSON
+    </a>
+    <button type="submit" id="submitBtn" class="btn btn-installer-primary">
+      <i class="bi bi-check-circle me-1"></i> Run 5-Minute Installation
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // CSRF helper
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Password visibility toggle
+  document.querySelectorAll('.toggle-pwd').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const targetId = this.getAttribute('data-target');
+      const input = document.getElementById(targetId);
+      const icon = this.querySelector('i');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+      } else {
+        input.type = 'password';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
+      }
+    });
+  });
+
+  // Password generator (WordPress style)
+  const pwdInput = document.getElementById('{{ form.admin_password.id_for_label }}');
+  const confirmPwdInput = document.getElementById('{{ form.confirm_password.id_for_label }}');
+  const genBtn = document.getElementById('btnGenPassword');
+
+  function generateSecurePassword() {
+    const chars = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%&*';
+    let pwd = '';
+    for (let i = 0; i < 16; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pwd;
+  }
+
+  if (genBtn && pwdInput && confirmPwdInput) {
+    genBtn.addEventListener('click', function() {
+      const securePwd = generateSecurePassword();
+      pwdInput.value = securePwd;
+      confirmPwdInput.value = securePwd;
+      pwdInput.type = 'text';
+      confirmPwdInput.type = 'text';
+      document.querySelectorAll('.toggle-pwd i').forEach(icon => {
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+      });
+      evaluatePasswordStrength(securePwd);
+    });
+  }
+
+  // Password strength meter
+  function evaluatePasswordStrength(pwd) {
+    const bar = document.getElementById('pwdStrengthBar');
+    const label = document.getElementById('pwdStrengthLabel');
+    if (!bar || !label) return;
+
+    if (!pwd) {
+      bar.style.width = '0%';
+      bar.className = 'progress-bar';
+      label.textContent = 'Strength: Enter a password';
+      label.className = 'small text-muted';
+      return;
+    }
+
+    let score = 0;
+    if (pwd.length >= 8) score += 25;
+    if (pwd.length >= 12) score += 20;
+    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score += 20;
+    if (/[0-9]/.test(pwd)) score += 15;
+    if (/[^a-zA-Z0-9]/.test(pwd)) score += 20;
+
+    if (score < 40) {
+      bar.style.width = '25%';
+      bar.className = 'progress-bar bg-danger';
+      label.textContent = 'Strength: Weak';
+      label.className = 'small text-danger fw-bold';
+    } else if (score < 75) {
+      bar.style.width = '60%';
+      bar.className = 'progress-bar bg-warning';
+      label.textContent = 'Strength: Medium';
+      label.className = 'small text-warning fw-bold';
+    } else {
+      bar.style.width = '100%';
+      bar.className = 'progress-bar bg-success';
+      label.textContent = 'Strength: Very Strong';
+      label.className = 'small text-success fw-bold';
+    }
+  }
+
+  if (pwdInput) {
+    pwdInput.addEventListener('input', function() {
+      evaluatePasswordStrength(this.value);
+    });
+  }
+
+  // Live Diagnostics Refresh via AJAX
+  const refreshBtn = document.getElementById('btnRefreshDiagnostics');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', function() {
+      const originalHTML = refreshBtn.innerHTML;
+      refreshBtn.disabled = true;
+      refreshBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Checking...';
+
+      fetch('{% url "installer_health_check" %}')
+        .then(res => res.json())
+        .then(data => {
+          refreshBtn.disabled = false;
+          refreshBtn.innerHTML = originalHTML;
+
+          const badge = document.getElementById('readinessBadge');
+          if (badge) {
+            if (data.all_passed) {
+              badge.innerHTML = '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="bi bi-check-circle-fill me-1"></i> System Ready</span>';
+            } else {
+              badge.innerHTML = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="bi bi-exclamation-triangle-fill me-1"></i> Action Required</span>';
+            }
+          }
+
+          // Rebuild table rows
+          const table = document.getElementById('diagnosticsTable');
+          if (table && data.checks) {
+            let html = '<tbody>';
+            data.checks.forEach(c => {
+              const badgeClass = c.passed ? 'check-badge-pass' : 'check-badge-fail';
+              const icon = c.passed ? 'bi-check-lg' : 'bi-x-lg';
+              const label = c.passed ? 'OK' : 'FAIL';
+              html += `
+                <tr class="border-bottom border-light">
+                  <td class="py-2" style="width: 32%;">
+                    <span class="fw-semibold text-dark">${c.name}</span>
+                    <div class="small text-muted">${c.required}</div>
+                  </td>
+                  <td class="py-2">
+                    <span class="small font-monospace text-secondary">${c.current}</span>
+                    <div class="small text-muted">${c.details}</div>
+                  </td>
+                  <td class="py-2 text-end" style="width: 15%;">
+                    <span class="check-badge ${badgeClass}">
+                      <i class="bi ${icon}"></i> ${label}
+                    </span>
+                  </td>
+                </tr>
+              `;
+            });
+            html += '</tbody>';
+            table.innerHTML = html;
+          }
+        })
+        .catch(err => {
+          refreshBtn.disabled = false;
+          refreshBtn.innerHTML = originalHTML;
+          alert('Failed to refresh diagnostics: ' + err);
+        });
+    });
+  }
+
+  // Database Connection Assistant Test
+  const testDbBtn = document.getElementById('btnRunDbTest');
+  if (testDbBtn) {
+    testDbBtn.addEventListener('click', function() {
+      const resultDiv = document.getElementById('dbTestResult');
+      testDbBtn.disabled = true;
+      testDbBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Testing...';
+      resultDiv.innerHTML = '';
+
+      const payload = {
+        engine: document.getElementById('dbTestEngine').value,
+        name: document.getElementById('dbTestName').value,
+        user: document.getElementById('dbTestUser').value,
+        password: document.getElementById('dbTestPassword').value,
+        host: document.getElementById('dbTestHost').value,
+        port: document.getElementById('dbTestPort').value,
+        save_to_env: document.getElementById('dbSaveEnv').checked
+      };
+
+      fetch('{% url "installer_test_db" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        testDbBtn.disabled = false;
+        testDbBtn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Test Connection';
+        if (data.success) {
+          resultDiv.innerHTML = `<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i> ${data.message}</span>`;
+          if (refreshBtn) refreshBtn.click();
+        } else {
+          resultDiv.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle-fill me-1"></i> ${data.message}</span>`;
+        }
+      })
+      .catch(err => {
+        testDbBtn.disabled = false;
+        testDbBtn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Test Connection';
+        resultDiv.innerHTML = `<span class="text-danger">Error: ${err}</span>`;
+      });
+    });
+  }
+
+  // Submit button progress state
+  document.getElementById('installerForm').addEventListener('submit', function() {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Installing System...';
+  });
+</script>
+{% endblock %}

@@ -1,294 +1,294 @@
 {% extends 'base.html' %}
 
-{% block title %}Book New Consignment - SwiftParcel PMS{% endblock %}
+{% block title %}{{ title }} — {{ COMPANY_NAME }}{% endblock %}
 
 {% block content %}
-<div class="py-8 bg-slate-50 min-h-screen">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    
-    <div class="pb-6 border-b border-slate-200 mb-8 flex justify-between items-center">
+<div class="row justify-content-center py-3">
+  <div class="col-lg-10">
+    <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
-        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Book New Consignment</h1>
-        <p class="text-xs text-slate-500 mt-1">Accept, weigh, inspect, and calculate shipping cost with instant tracking number allocation</p>
+        <h3 class="fw-bold mb-1">{{ title }}</h3>
+        <p class="text-secondary small mb-0">Record consignment details and shipment package items</p>
       </div>
-      <a href="{% url 'parcel_list' %}" class="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center">
-        <i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i> Back to Registry
+      <a href="{% url 'parcel_list' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> Back to Shipments
       </a>
     </div>
 
-    <form method="POST" id="parcelBookingForm">
+    <form method="post" id="parcelBookingForm">
       {% csrf_token %}
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        <!-- Left Side: Multi-section Booking Form -->
-        <div class="lg:col-span-8 space-y-6">
-          
-          <!-- Section 1: Sender Details -->
-          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h2 class="text-sm font-bold uppercase tracking-wider text-blue-600 mb-4 flex items-center">
-              <i data-lucide="user" class="w-4 h-4 mr-2"></i> 1. Sender Information
-            </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Sender Full Name *</label>
+      <!-- Consignment Routing & Parties -->
+      <div class="card card-nht p-4 mb-4 shadow-sm">
+        <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary">
+          <i class="bi bi-geo-alt-fill me-2"></i>Routing & Destination
+        </h5>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold text-secondary small">Origin Central Terminal</label>
+            <input type="text" class="form-control" value="{{ SITE_SETTINGS.head_office }} (Head Office)" readonly disabled>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold text-secondary small">Destination Route *</label>
+            {{ form.route }}
+            {% if form.route.errors %}
+              <div class="text-danger small mt-1">{{ form.route.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2 text-primary">
+          <i class="bi bi-people-fill me-2"></i>Sender & Receiver Information
+        </h5>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="p-3 bg-light rounded border h-100">
+              <h6 class="fw-bold text-dark mb-3"><i class="bi bi-person-fill text-primary me-1"></i>Sender Details</h6>
+              <div class="mb-3">
+                <label class="form-label small fw-semibold text-secondary">{{ form.sender_name.label|default:"Sender Full Name" }} *</label>
                 {{ form.sender_name }}
+                {% if form.sender_name.errors %}<div class="text-danger small mt-1">{{ form.sender_name.errors.0 }}</div>{% endif %}
               </div>
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Sender Phone Number *</label>
+              <div class="mb-2">
+                <label class="form-label small fw-semibold text-secondary">{{ form.sender_phone.label|default:"Sender Phone Number" }} *</label>
                 {{ form.sender_phone }}
-              </div>
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Sender Email</label>
-                {{ form.sender_email }}
-              </div>
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Sender City *</label>
-                {{ form.sender_city }}
-              </div>
-              <div class="sm:col-span-2">
-                <label class="block font-semibold text-slate-700 mb-1">Pickup / Origin Address *</label>
-                {{ form.sender_address }}
+                {% if form.sender_phone.errors %}<div class="text-danger small mt-1">{{ form.sender_phone.errors.0 }}</div>{% endif %}
               </div>
             </div>
           </div>
 
-          <!-- Section 2: Receiver Details -->
-          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h2 class="text-sm font-bold uppercase tracking-wider text-emerald-600 mb-4 flex items-center">
-              <i data-lucide="map-pin" class="w-4 h-4 mr-2"></i> 2. Recipient Information
-            </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Recipient Full Name *</label>
+          <div class="col-md-6">
+            <div class="p-3 bg-light rounded border h-100">
+              <h6 class="fw-bold text-dark mb-3"><i class="bi bi-person-check-fill text-success me-1"></i>Receiver Details</h6>
+              <div class="mb-3">
+                <label class="form-label small fw-semibold text-secondary">{{ form.receiver_name.label|default:"Receiver Full Name" }} *</label>
                 {{ form.receiver_name }}
+                {% if form.receiver_name.errors %}<div class="text-danger small mt-1">{{ form.receiver_name.errors.0 }}</div>{% endif %}
               </div>
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Recipient Phone Number *</label>
+              <div class="mb-3">
+                <label class="form-label small fw-semibold text-secondary">{{ form.receiver_phone.label|default:"Receiver Phone Number" }} *</label>
                 {{ form.receiver_phone }}
+                {% if form.receiver_phone.errors %}<div class="text-danger small mt-1">{{ form.receiver_phone.errors.0 }}</div>{% endif %}
               </div>
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Recipient Email</label>
-                {{ form.receiver_email }}
-              </div>
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Destination City *</label>
-                {{ form.receiver_city }}
-              </div>
-              <div class="sm:col-span-2">
-                <label class="block font-semibold text-slate-700 mb-1">Delivery Address (or Branch Hold Station) *</label>
-                {{ form.receiver_address }}
+              <div class="mb-2">
+                <label class="form-label small fw-semibold text-secondary">{{ form.receiver_id_number.label|default:"Receiver ID / Passport" }} *</label>
+                {{ form.receiver_id_number }}
+                {% if form.receiver_id_number.errors %}<div class="text-danger small mt-1">{{ form.receiver_id_number.errors.0 }}</div>{% endif %}
               </div>
             </div>
           </div>
-
-          <!-- Section 3: Routing & Logistics -->
-          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h2 class="text-sm font-bold uppercase tracking-wider text-indigo-600 mb-4 flex items-center">
-              <i data-lucide="git-merge" class="w-4 h-4 mr-2"></i> 3. Routing & Service Class
-            </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Origin Branch (Drop-off Hub) *</label>
-                {{ form.origin_branch }}
-              </div>
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Destination Branch (Receiving Hub) *</label>
-                {{ form.destination_branch }}
-              </div>
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Delivery Option *</label>
-                {{ form.delivery_type }}
-              </div>
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Service Tier *</label>
-                {{ form.service_type }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Section 4: Specifications & Measurements -->
-          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h2 class="text-sm font-bold uppercase tracking-wider text-purple-600 mb-4 flex items-center">
-              <i data-lucide="scale" class="w-4 h-4 mr-2"></i> 4. Parcel Specifications & Safety
-            </h2>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs mb-4">
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Category *</label>
-                {{ form.category }}
-              </div>
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Declared Value ($ USD)</label>
-                {{ form.declared_value }}
-              </div>
-              <div class="sm:col-span-2">
-                <label class="block font-semibold text-slate-700 mb-1">Contents Description *</label>
-                {{ form.item_description }}
-              </div>
-            </div>
-
-            <!-- Dimensions -->
-            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 mb-4">
-              <span class="block text-xs font-bold text-slate-700 mb-2">Weight & Dimensions</span>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                <div>
-                  <label class="block text-slate-600 mb-1">Actual Wt (kg)</label>
-                  {{ form.weight_kg }}
-                </div>
-                <div>
-                  <label class="block text-slate-600 mb-1">Length (cm)</label>
-                  {{ form.length_cm }}
-                </div>
-                <div>
-                  <label class="block text-slate-600 mb-1">Width (cm)</label>
-                  {{ form.width_cm }}
-                </div>
-                <div>
-                  <label class="block text-slate-600 mb-1">Height (cm)</label>
-                  {{ form.height_cm }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Fragile toggle -->
-            <div class="flex items-center space-x-3 p-3 bg-amber-50/60 rounded-xl border border-amber-200">
-              {{ form.is_fragile }}
-              <div>
-                <label for="id_is_fragile" class="text-xs font-bold text-amber-900 cursor-pointer">
-                  Fragile / High-Care Handling Required
-                </label>
-                <p class="text-[11px] text-amber-700">Applies specialized protective handling sticker and separate transit sorting.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Section 5: Payment Details -->
-          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-700 mb-4 flex items-center">
-              <i data-lucide="credit-card" class="w-4 h-4 mr-2"></i> 5. Payment Details
-            </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Payment Method *</label>
-                {{ form.payment_method }}
-              </div>
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Payment Status *</label>
-                {{ form.payment_status }}
-              </div>
-            </div>
-          </div>
-
         </div>
 
-        <!-- Right Side: Real-time Live Pricing Summary Card (Sticky) -->
-        <div class="lg:col-span-4 sticky top-24 space-y-4">
-          
-          <div class="bg-gradient-to-br from-slate-900 to-blue-950 text-white rounded-2xl p-6 shadow-xl border border-slate-800">
-            <div class="flex items-center justify-between pb-4 border-b border-slate-800">
-              <h3 class="font-bold text-sm tracking-wide uppercase text-blue-400 flex items-center">
-                <i data-lucide="calculator" class="w-4 h-4 mr-1.5"></i> Live Billing Summary
-              </h3>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">PostgreSQL Computed</span>
-            </div>
-
-            <div class="py-4 space-y-3 text-xs text-slate-300">
-              <div class="flex justify-between">
-                <span>Base Booking Rate:</span>
-                <span id="price_base" class="font-semibold text-white">$5.00</span>
-              </div>
-              <div class="flex justify-between">
-                <span>Weight Fee (<span id="price_billable_wt">1.0</span> kg billable):</span>
-                <span id="price_weight" class="font-semibold text-white">$2.50</span>
-              </div>
-              <div class="flex justify-between">
-                <span>Volumetric Weight:</span>
-                <span id="price_vol_wt" class="text-slate-400">0.2 kg</span>
-              </div>
-              <div class="flex justify-between">
-                <span>Fragile Handling Fee:</span>
-                <span id="price_fragile" class="font-semibold text-white">$0.00</span>
-              </div>
-              <div class="flex justify-between">
-                <span>Declared Value Insurance:</span>
-                <span id="price_insurance" class="font-semibold text-white">$0.00</span>
-              </div>
-              <div class="flex justify-between">
-                <span>Tax / VAT (5%):</span>
-                <span id="price_tax" class="font-semibold text-white">$0.38</span>
-              </div>
-
-              <div class="pt-4 border-t border-slate-800 flex justify-between items-baseline">
-                <span class="text-sm font-bold text-white">Total Charge:</span>
-                <span id="price_total" class="text-2xl font-black text-emerald-400">$7.88</span>
-              </div>
-            </div>
-
-            <div class="pt-4 border-t border-slate-800 space-y-3">
-              <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-sm flex items-center justify-center space-x-1.5 transition shadow-lg shadow-blue-600/30">
-                <i data-lucide="check-circle" class="w-4 h-4"></i>
-                <span>Complete Booking & Print Waybill</span>
-              </button>
-              <p class="text-[10px] text-center text-slate-400">
-                Tracking barcode and QR code will be generated upon saving.
-              </p>
-            </div>
+        <h5 class="fw-bold mt-4 mb-3 border-bottom pb-2 text-primary">
+          <i class="bi bi-credit-card-2-front-fill me-2"></i>Payment Details
+        </h5>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-secondary">Payment Status</label>
+            {{ form.payment_status }}
+            {% if form.payment_status.errors %}<div class="text-danger small mt-1">{{ form.payment_status.errors.0 }}</div>{% endif %}
           </div>
-
-          <!-- Safety Notice -->
-          <div class="bg-blue-50 p-4 rounded-xl border border-blue-200 text-xs text-blue-900 space-y-1">
-            <p class="font-bold flex items-center"><i data-lucide="info" class="w-3.5 h-3.5 mr-1 text-blue-600"></i> Automatic OTP Generation</p>
-            <p class="text-[11px] text-blue-700">A secure 6-digit handover OTP is automatically created for the recipient upon saving this parcel.</p>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-secondary">Payment Method</label>
+            {{ form.payment_method }}
+            {% if form.payment_method.errors %}<div class="text-danger small mt-1">{{ form.payment_method.errors.0 }}</div>{% endif %}
           </div>
+        </div>
+      </div>
 
+      <!-- Shipment Items FormSet (Section 9) -->
+      <div class="card card-nht p-4 mb-4 shadow-sm">
+        <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+          <div>
+            <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-boxes me-2"></i>Shipment Items</h5>
+            <small class="text-muted">Consignments must contain 1 or more items. Charges calculate per item.</small>
+          </div>
+          <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" id="addItemBtn">
+            <i class="bi bi-plus-lg me-1"></i> Add Another Item
+          </button>
         </div>
 
+        {{ formset.management_form }}
+        {% if formset.non_form_errors %}
+          <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+        {% endif %}
+
+        <div id="itemsContainer">
+          {% for item_form in formset %}
+            <div class="item-row p-3 mb-3 border rounded bg-light">
+              <div class="row g-2 align-items-center">
+                {% for hidden in item_form.hidden_fields %}
+                  {{ hidden }}
+                {% endfor %}
+
+                <div class="col-md-4 col-sm-6">
+                  <label class="form-label small fw-semibold text-secondary mb-1">Item Description *</label>
+                  {{ item_form.description }}
+                  {% if item_form.description.errors %}<div class="text-danger small">{{ item_form.description.errors.0 }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-3 col-sm-6">
+                  <label class="form-label small fw-semibold text-secondary mb-1">Packaging / Wrap</label>
+                  {{ item_form.wrap_type }}
+                  {% if item_form.wrap_type.errors %}<div class="text-danger small">{{ item_form.wrap_type.errors.0 }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-2 col-sm-4">
+                  <label class="form-label small fw-semibold text-secondary mb-1">Quantity *</label>
+                  {{ item_form.quantity }}
+                  {% if item_form.quantity.errors %}<div class="text-danger small">{{ item_form.quantity.errors.0 }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-2 col-sm-4">
+                  <label class="form-label small fw-semibold text-secondary mb-1">Unit Price ({{ CURRENCY }})</label>
+                  {{ item_form.unit_price }}
+                  {% if item_form.unit_price.errors %}<div class="text-danger small">{{ item_form.unit_price.errors.0 }}</div>{% endif %}
+                </div>
+
+                <div class="col-md-1 col-sm-4 text-center mt-3 mt-sm-0">
+                  {% if formset.can_delete and item_form.instance.pk %}
+                    <label class="form-label small fw-semibold text-danger d-block mb-1">Del</label>
+                    {{ item_form.DELETE }}
+                  {% else %}
+                    <label class="form-label small text-muted d-block mb-1">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-row-btn" title="Remove Item">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="p-3 bg-white border rounded d-flex justify-content-between align-items-center mt-3">
+          <span class="fw-bold text-uppercase text-secondary">Estimated Consignment Total:</span>
+          <h4 class="fw-bold text-primary mb-0" id="liveGrandTotal">{{ CURRENCY }} 0.00</h4>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2 mb-5">
+        <a href="{% url 'parcel_list' %}" class="btn btn-light border px-4">Cancel</a>
+        <button type="submit" class="btn btn-primary btn-lg px-5 fw-semibold">
+          <i class="bi bi-check2-circle me-1"></i> Save Consignment
+        </button>
       </div>
     </form>
-
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  function updateLivePrice() {
-    const service = document.getElementById('id_service_type').value || 'STANDARD';
-    const weight = document.getElementById('id_weight_kg').value || 1;
-    const length = document.getElementById('id_length_cm').value || 10;
-    const width = document.getElementById('id_width_cm').value || 10;
-    const height = document.getElementById('id_height_cm').value || 10;
-    const isFragile = document.getElementById('id_is_fragile').checked;
-    const declared = document.getElementById('id_declared_value').value || 0;
-
-    const url = `/api/calculate-rate/?service_type=${service}&weight_kg=${weight}&length_cm=${length}&width_cm=${width}&height_cm=${height}&is_fragile=${isFragile}&declared_value=${declared}`;
-
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById('price_base').innerText = '$' + data.base_price.toFixed(2);
-        document.getElementById('price_billable_wt').innerText = data.billable_weight.toFixed(1);
-        document.getElementById('price_vol_wt').innerText = data.volumetric_weight.toFixed(1) + ' kg';
-        document.getElementById('price_weight').innerText = '$' + data.weight_price.toFixed(2);
-        document.getElementById('price_fragile').innerText = '$' + data.fragile_fee.toFixed(2);
-        document.getElementById('price_insurance').innerText = '$' + data.insurance_fee.toFixed(2);
-        document.getElementById('price_tax').innerText = '$' + data.tax_amount.toFixed(2);
-        document.getElementById('price_total').innerText = '$' + data.total_price.toFixed(2);
-      })
-      .catch(err => console.error(err));
-  }
-
   document.addEventListener('DOMContentLoaded', function() {
-    const inputs = ['id_service_type', 'id_weight_kg', 'id_length_cm', 'id_width_cm', 'id_height_cm', 'id_is_fragile', 'id_declared_value'];
-    inputs.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.addEventListener('input', updateLivePrice);
-        el.addEventListener('change', updateLivePrice);
-      }
+    const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+    const container = document.getElementById('itemsContainer');
+    const addItemBtn = document.getElementById('addItemBtn');
+    const liveTotalEl = document.getElementById('liveGrandTotal');
+
+    function calculateTotal() {
+      let grandTotal = 0;
+      const rows = container.querySelectorAll('.item-row');
+      rows.forEach(row => {
+        const delCheck = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        if (delCheck && delCheck.checked) return;
+
+        const qtyInput = row.querySelector('.item-qty');
+        const priceInput = row.querySelector('.item-price');
+        if (qtyInput && priceInput) {
+          const qty = parseFloat(qtyInput.value) || 0;
+          const price = parseFloat(priceInput.value) || 0;
+          grandTotal += (qty * price);
+        }
+      });
+      liveTotalEl.textContent = '{{ CURRENCY }} ' + grandTotal.toFixed(2);
+    }
+
+    function reindexRows() {
+      const rows = container.querySelectorAll('.item-row');
+      rows.forEach((row, index) => {
+        const regex = new RegExp('items-\\d+-', 'g');
+        row.querySelectorAll('input, select, textarea, label').forEach(el => {
+          if (el.name) el.name = el.name.replace(regex, `items-${index}-`);
+          if (el.id) el.id = el.id.replace(regex, `items-${index}-`);
+          if (el.htmlFor) el.htmlFor = el.htmlFor.replace(regex, `items-${index}-`);
+        });
+      });
+      totalForms.value = rows.length;
+      updateRemoveButtons();
+    }
+
+    function updateRemoveButtons() {
+      const rows = container.querySelectorAll('.item-row');
+      rows.forEach(row => {
+        const btn = row.querySelector('.remove-row-btn');
+        if (btn) {
+          btn.style.visibility = (rows.length > 1) ? 'visible' : 'hidden';
+        }
+      });
+    }
+
+    container.addEventListener('input', calculateTotal);
+    container.addEventListener('change', calculateTotal);
+
+    if (addItemBtn) {
+      addItemBtn.addEventListener('click', function() {
+        const formCount = parseInt(totalForms.value, 10);
+        const firstRow = container.querySelector('.item-row');
+        if (!firstRow) return;
+
+        const newRow = firstRow.cloneNode(true);
+        const regex = new RegExp(`items-(\\d+)-`, 'g');
+        newRow.innerHTML = newRow.innerHTML.replace(regex, `items-${formCount}-`);
+
+        // Clear values in cloned inputs
+        newRow.querySelectorAll('input').forEach(input => {
+          if (input.type === 'hidden' && input.name.endsWith('-id')) {
+            input.value = '';
+          } else if (input.classList.contains('item-qty')) {
+            input.value = '1';
+          } else if (input.classList.contains('item-price')) {
+            input.value = '0.00';
+          } else if (input.type === 'checkbox') {
+            input.checked = false;
+          } else if (input.type !== 'hidden') {
+            input.value = '';
+          }
+        });
+
+        // Ensure remove button works on cloned row
+        const removeBtn = newRow.querySelector('.remove-row-btn');
+        if (removeBtn) {
+          removeBtn.addEventListener('click', function() {
+            newRow.remove();
+            reindexRows();
+            calculateTotal();
+          });
+        }
+
+        container.appendChild(newRow);
+        totalForms.value = formCount + 1;
+        updateRemoveButtons();
+        calculateTotal();
+      });
+    }
+
+    // Attach listener to existing remove buttons
+    container.querySelectorAll('.remove-row-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const rows = container.querySelectorAll('.item-row');
+        if (rows.length > 1) {
+          btn.closest('.item-row').remove();
+          reindexRows();
+          calculateTotal();
+        } else {
+          alert('At least one shipment item is required.');
+        }
+      });
     });
-    updateLivePrice();
+
+    updateRemoveButtons();
+    calculateTotal();
   });
 </script>
 {% endblock %}

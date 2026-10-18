@@ -1,30 +1,47 @@
 """
-URL configuration for parcel_system project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.1/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+URL configuration for Northern Highways Transporters Parcel Management System.
 """
+
 from django.contrib import admin
 from django.urls import path, include
-from django.conf import settings
-from django.conf.urls.static import static
+from core import views as core_views
+from audit import views as audit_views
 
 urlpatterns = [
+    # WordPress-Style Web Installer Wizard
+    path('', include('installer.urls')),
+
+    # SaaS Multi-Tenant Platform Master URLs
+    path('', include('tenants.urls')),
+
+    # Secondary Django Admin
     path('admin/', admin.site.urls),
+
+    # Custom Super Admin Panel (Section 27)
+    path('admin-panel/', core_views.admin_panel_view, name='admin_panel'),
+    path('admin-panel/settings/', core_views.settings_update_view, name='admin_panel_settings'),
+    path('admin-panel/config/', core_views.config_list_view, name='admin_panel_config'),
+    path('admin-panel/config/fields/<int:pk>/edit/', core_views.field_config_edit_view, name='field_config_edit'),
+    path('admin-panel/config/choices/new/', core_views.choice_config_create_view, name='choice_config_create'),
+    path('admin-panel/config/choices/<int:pk>/edit/', core_views.choice_config_edit_view, name='choice_config_edit'),
+    path('admin-panel/config/choices/<int:pk>/toggle/', core_views.choice_config_toggle_view, name='choice_config_toggle'),
+    path('admin-panel/audit/', audit_views.audit_log_list_view, name='admin_panel_audit'),
+
+    # Routes Management
+    path('routes/', include('routes.urls')),
+
+    # Accounts & User Management
+    path('', include('accounts.urls')),
+
+    # Reports & Statements
+    path('', include('reports.urls')),
+
+    # Parcels, Public Home & Tracking (root match)
     path('', include('parcels.urls')),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-
+# Custom HTTP Error Handlers (Section 30)
+handler400 = 'core.views.bad_request_view'
+handler403 = 'core.views.permission_denied_view'
+handler404 = 'core.views.not_found_view'
+handler500 = 'core.views.server_error_view'

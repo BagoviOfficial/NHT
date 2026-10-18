@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} — {{ COMPANY_NAME }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-lg-7">
+    <div class="card card-nht shadow-sm">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0">{{ title }}</h5>
+        <a href="{% url 'admin_panel_users' %}" class="btn btn-outline-secondary btn-sm">Back to Users</a>
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <div class="row g-3 mb-3">
+            {% if form.username %}
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold text-secondary">Username *</label>
+                {{ form.username }}
+                {% if form.username.errors %}<div class="text-danger small">{{ form.username.errors.0 }}</div>{% endif %}
+              </div>
+            {% endif %}
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary">Unique Phone Number *</label>
+              {{ form.phone }}
+              {% if form.phone.errors %}<div class="text-danger small">{{ form.phone.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary">First Name</label>
+              {{ form.first_name }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary">Last Name</label>
+              {{ form.last_name }}
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-semibold text-secondary">Staff Email Address</label>
+              {{ form.email }}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary">System Role *</label>
+              {{ form.role }}
+              {% if form.role.errors %}<div class="text-danger small">{{ form.role.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold text-secondary">Assigned Route Station</label>
+              {{ form.assigned_route }}
+              {% if form.assigned_route.errors %}<div class="text-danger small">{{ form.assigned_route.errors.0 }}</div>{% endif %}
+              <small class="text-muted">Mandatory for Destination / Collection Staff.</small>
+            </div>
+
+            {% if form.password %}
+              <div class="col-12">
+                <label class="form-label small fw-semibold text-secondary">Temporary Password *</label>
+                {{ form.password }}
+                {% if form.password.errors %}<div class="text-danger small">{{ form.password.errors.0 }}</div>{% endif %}
+              </div>
+            {% endif %}
+
+            <div class="col-12 pt-2">
+              <div class="form-check">
+                {{ form.is_active }}
+                <label class="form-check-label fw-semibold text-dark" for="{{ form.is_active.id_for_label }}">
+                  Active User Account
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+            <a href="{% url 'admin_panel_users' %}" class="btn btn-light border">Cancel</a>
+            <button type="submit" class="btn btn-primary px-4 fw-semibold">Save User</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

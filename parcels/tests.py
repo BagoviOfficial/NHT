@@ -1,263 +1,369 @@
-from django.test import TestCase, Client
-from django.contrib.auth.models import User
-from django.urls import reverse
 from decimal import Decimal
-from parcels.models import (
-    Branch, UserProfile, ShippingRate, Parcel,
-    ParcelTrackingLog, TransitManifest, PickupRequest, CustomerInquiry
+from django.test import TestCase, Client
+from django.urls import reverse
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
+from accounts.models import User, Role
+from routes.models import Route
+from core.models import SiteSettings
+from .models import Parcel, ShipmentItem, ParcelStatusHistory, ParcelStatus, PaymentStatus, PaymentMethod
+from .forms import ParcelForm
+from .services import (
+    create_parcel, update_parcel, transition_parcel_status,
+    collect_parcel, cancel_parcel
 )
-from parcels.utils import calculate_shipping_cost, generate_qr_base64, generate_svg_barcode
+from .utils import generate_tracking_qr_svg
 
 
-class ParcelManagementSystemTests(TestCase):
-
+class ParcelLifecycleAndSecurityTests(TestCase):
     def setUp(self):
-        # 1. Setup Shipping Rates
-        self.standard_rate = ShippingRate.objects.create(
-            service_type='STANDARD',
-            base_price=Decimal('5.00'),
-            per_kg_rate=Decimal('2.50'),
-            fragile_fee=Decimal('4.00'),
-            insurance_rate_pct=Decimal('1.50'),
-            tax_pct=Decimal('5.00'),
-            delivery_time_frame='3-5 Days'
-        )
-        self.express_rate = ShippingRate.objects.create(
-            service_type='EXPRESS',
-            base_price=Decimal('12.00'),
-            per_kg_rate=Decimal('4.50'),
-            fragile_fee=Decimal('6.00'),
-            insurance_rate_pct=Decimal('1.50'),
-            tax_pct=Decimal('5.00'),
-            delivery_time_frame='1-2 Days'
-        )
-
-        # 2. Setup Branches
-        self.branch_nyc = Branch.objects.create(
-            code='NYC-01',
-            name='New York Hub',
-            branch_type='MAIN_HUB',
-            phone='+1 212 555 0101',
-            address='450 7th Ave',
-            city='New York',
-            state='NY',
-            postal_code='10123'
-        )
-        self.branch_lax = Branch.objects.create(
-            code='LAX-01',
-            name='Los Angeles Hub',
-            branch_type='MAIN_HUB',
-            phone='+1 310 555 0182',
-            address='5757 W Century Blvd',
-            city='Los Angeles',
-            state='CA',
-            postal_code='90045'
-        )
-
-        # 3. Setup Users
-        self.admin_user = User.objects.create_user(
-            username='admin_test',
-            password='testpassword',
-            first_name='Admin',
-            last_name='User',
-            is_staff=True,
-            is_superuser=True
-        )
-        UserProfile.objects.create(user=self.admin_user, role='ADMIN', branch=self.branch_nyc)
-
-        self.staff_user = User.objects.create_user(
-            username='staff_test',
-            password='testpassword',
-            first_name='Staff',
-            last_name='Member'
-        )
-        UserProfile.objects.create(user=self.staff_user, role='BRANCH_STAFF', branch=self.branch_nyc)
-
-        self.courier_user = User.objects.create_user(
-            username='courier_test',
-            password='testpassword',
-            first_name='Courier',
-            last_name='Rider'
-        )
-        UserProfile.objects.create(user=self.courier_user, role='COURIER', branch=self.branch_nyc, vehicle_type='Scooter', license_plate='TEST-101')
-
-        self.customer_user = User.objects.create_user(
-            username='customer_test',
-            password='testpassword',
-            first_name='Customer',
-            last_name='One'
-        )
-        UserProfile.objects.create(user=self.customer_user, role='CUSTOMER', phone='1234567890')
-
+        cache.clear()
         self.client = Client()
+        self.settings = SiteSettings.load()
 
-    def test_utils_pricing_calculation(self):
-        """Test pricing calculator with actual vs volumetric weight and options."""
-        result = calculate_shipping_cost(
-            service_type='STANDARD',
-            weight_kg=2.0,
-            length_cm=10,
-            width_cm=10,
-            height_cm=10,
-            is_fragile=False,
-            declared_value=0.0
+        self.route_garissa = Route.objects.create(name="Garissa", origin="Nairobi")
+        self.route_mandera = Route.objects.create(name="Mandera", origin="Nairobi")
+
+        self.admin = User.objects.create_user(
+            username="admin_p", phone="0733000001", password="Password123!",
+            role=Role.SUPER_ADMIN, is_staff=True, is_superuser=True
         )
-        # base: 5.0, weight: 2.0 * 2.50 = 5.0, subtotal: 10.0, tax 5%: 0.50, total: 10.50
-        self.assertEqual(result['base_price'], 5.0)
-        self.assertEqual(result['weight_price'], 5.0)
-        self.assertEqual(result['total_price'], 10.50)
-
-    def test_qr_and_barcode_generation(self):
-        """Test that SVG barcode and base64 QR code strings are generated."""
-        barcode = generate_svg_barcode('PRCL-TEST-123')
-        self.assertIn('<svg', barcode)
-        self.assertIn('PRCL-TEST-123', barcode)
-
-        qr_img = generate_qr_base64('https://swiftparcel.com/track/PRCL-TEST-123')
-        self.assertTrue(qr_img.startswith('data:image/svg+xml;base64,'))
-
-
-    def test_parcel_creation_and_pricing(self):
-        """Test parcel model lifecycle, tracking code, OTP and pricing."""
-        parcel = Parcel.objects.create(
-            sender_name='Alice Smith',
-            sender_phone='555-0101',
-            sender_address='123 Broadway',
-            sender_city='New York',
-            receiver_name='Bob Jones',
-            receiver_phone='555-0202',
-            receiver_address='456 Sunset Blvd',
-            receiver_city='Los Angeles',
-            origin_branch=self.branch_nyc,
-            destination_branch=self.branch_lax,
-            service_type='STANDARD',
-            category='GENERAL',
-            item_description='Books and notebooks',
-            weight_kg=Decimal('4.00'),
-            length_cm=Decimal('20.0'),
-            width_cm=Decimal('20.0'),
-            height_cm=Decimal('10.0'),
-            is_fragile=True,
-            declared_value=Decimal('100.00'),
-            created_by=self.staff_user
+        self.ops_mgr = User.objects.create_user(
+            username="ops_p", phone="0733000002", password="Password123!",
+            role=Role.OPERATIONS_MANAGER, is_staff=True
         )
-        parcel.calculate_pricing()
-        parcel.save()
-
-        self.assertTrue(parcel.tracking_number.startswith('PRCL-'))
-        self.assertEqual(len(parcel.security_otp), 6)
-        self.assertTrue(parcel.total_price > 0)
-        self.assertEqual(parcel.status, 'BOOKED')
-        self.assertEqual(parcel.current_branch, self.branch_nyc)
-
-    def test_transit_manifest_dispatch_and_receive(self):
-        """Test linehaul manifest bulk dispatch and receipt."""
-        parcel = Parcel.objects.create(
-            sender_name='Alice', sender_phone='111', sender_address='NYC', sender_city='New York',
-            receiver_name='Bob', receiver_phone='222', receiver_address='LAX', receiver_city='LA',
-            origin_branch=self.branch_nyc, destination_branch=self.branch_lax,
-            weight_kg=Decimal('2.0'), item_description='Test item', created_by=self.staff_user
+        self.counter_clerk = User.objects.create_user(
+            username="clerk_p", phone="0733000003", password="Password123!",
+            role=Role.COUNTER_STAFF, is_staff=True
         )
-        parcel.calculate_pricing()
-        parcel.save()
-
-        manifest = TransitManifest.objects.create(
-            origin_branch=self.branch_nyc,
-            destination_branch=self.branch_lax,
-            driver_name='John Hauler',
-            driver_phone='555-9999',
-            vehicle_plate='TRK-9900',
-            created_by=self.staff_user
+        self.dest_garissa = User.objects.create_user(
+            username="garissa_staff", phone="0733000004", password="Password123!",
+            role=Role.DESTINATION_STAFF, assigned_route=self.route_garissa, is_staff=True
         )
-        manifest.parcels.add(parcel)
+        self.dest_mandera = User.objects.create_user(
+            username="mandera_staff", phone="0733000005", password="Password123!",
+            role=Role.DESTINATION_STAFF, assigned_route=self.route_mandera, is_staff=True
+        )
 
-        # Log in as staff and trigger dispatch
-        self.client.login(username='staff_test', password='testpassword')
-        resp = self.client.get(reverse('manifest_dispatch', kwargs={'manifest_number': manifest.manifest_number}))
-        self.assertEqual(resp.status_code, 302)
+    def test_tracking_number_format(self):
+        p = Parcel.objects.create(
+            route=self.route_garissa,
+            sender_name="Alice", sender_phone="0711111111",
+            receiver_name="Bob", receiver_phone="0722222222",
+            receiver_id_number="12345678"
+        )
+        self.assertTrue(p.tracking_number.startswith("NHT-"))
+        self.assertEqual(len(p.tracking_number), 12)  # NHT- (4) + 8 chars = 12
 
+    def test_multi_item_parcel_creation_and_exact_decimal_totals(self):
+        items = [
+            {'description': 'Solar Panel', 'wrap_type': 'Box', 'quantity': 2, 'unit_price': Decimal('2500.50')},
+            {'description': 'Battery Cable', 'wrap_type': 'Bundle', 'quantity': 3, 'unit_price': Decimal('350.25')},
+        ]
+        parcel = create_parcel(
+            route=self.route_garissa,
+            sender_name="Alice", sender_phone="0711111111",
+            receiver_name="Bob", receiver_phone="0722222222",
+            receiver_id_number="12345678",
+            payment_status=PaymentStatus.PAID,
+            payment_method=PaymentMethod.MPESA,
+            items_data=items,
+            created_by=self.counter_clerk
+        )
+        # 2 * 2500.50 = 5001.00; 3 * 350.25 = 1050.75; Total = 6051.75
+        expected_total = Decimal('6051.75')
+        self.assertEqual(parcel.price, expected_total)
+        self.assertEqual(parcel.items.count(), 2)
+        self.assertEqual(parcel.status, ParcelStatus.RECEIVED_AT_HQ)
+
+    def test_editing_blocked_after_dispatch(self):
+        items = [{'description': 'Box of books', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('500.00')}]
+        parcel = create_parcel(
+            route=self.route_garissa, sender_name="Alice", sender_phone="0711111111",
+            receiver_name="Bob", receiver_phone="0722222222", receiver_id_number="12345678",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+            items_data=items, created_by=self.counter_clerk
+        )
+        transition_parcel_status(
+            parcel_id=parcel.pk,
+            new_status=ParcelStatus.IN_TRANSIT,
+            user=self.ops_mgr,
+            truck_plate_number="KBB 123X",
+            driver_name="Farah Noor"
+        )
         parcel.refresh_from_db()
-        manifest.refresh_from_db()
-        self.assertEqual(manifest.status, 'DISPATCHED')
-        self.assertEqual(parcel.status, 'IN_TRANSIT')
-        self.assertTrue(parcel.tracking_logs.filter(status='IN_TRANSIT').exists())
+        self.assertFalse(parcel.is_editable)
 
-        # Trigger receive
-        resp = self.client.get(reverse('manifest_receive', kwargs={'manifest_number': manifest.manifest_number}))
-        self.assertEqual(resp.status_code, 302)
+        # Attempt to edit should raise ValidationError
+        with self.assertRaises(ValidationError):
+            update_parcel(
+                parcel_id=parcel.pk,
+                route=self.route_mandera,
+                sender_name="New Sender", sender_phone="0700000000",
+                receiver_name="New Recv", receiver_phone="0700000000",
+                receiver_id_number="99999999",
+                payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+                items_data=items, user=self.counter_clerk
+            )
 
-        parcel.refresh_from_db()
-        manifest.refresh_from_db()
-        self.assertEqual(manifest.status, 'RECEIVED')
-        self.assertEqual(parcel.status, 'RECEIVED_AT_DESTINATION')
-        self.assertEqual(parcel.current_branch, self.branch_lax)
-
-    def test_courier_delivery_verification_with_otp(self):
-        """Test courier delivery with security OTP confirmation."""
-        parcel = Parcel.objects.create(
-            sender_name='Alice', sender_phone='111', sender_address='NYC', sender_city='New York',
-            receiver_name='Bob', receiver_phone='222', receiver_address='LAX', receiver_city='LA',
-            origin_branch=self.branch_nyc, destination_branch=self.branch_lax,
-            weight_kg=Decimal('1.0'), item_description='Test item',
-            status='OUT_FOR_DELIVERY',
-            assigned_courier=self.courier_user,
-            created_by=self.staff_user
+    def test_status_machine_transitions(self):
+        items = [{'description': 'Medicine', 'wrap_type': 'Carton', 'quantity': 1, 'unit_price': Decimal('800.00')}]
+        p = create_parcel(
+            route=self.route_garissa, sender_name="Dr. Ali", sender_phone="0711111111",
+            receiver_name="Clinic", receiver_phone="0722222222", receiver_id_number="12345678",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.MPESA,
+            items_data=items, created_by=self.counter_clerk
         )
 
-        self.client.login(username='courier_test', password='testpassword')
+        # Dispatch requires truck and driver
+        with self.assertRaises(ValidationError):
+            transition_parcel_status(p.pk, ParcelStatus.IN_TRANSIT, user=self.ops_mgr, truck_plate_number="", driver_name="")
 
-        # Attempt with wrong OTP
-        resp = self.client.post(reverse('courier_delivery_action', kwargs={'tracking_number': parcel.tracking_number}), {
-            'action': 'DELIVER',
-            'receiver_name': 'Bob Signee',
-            'security_otp': '000000', # wrong
-            'delivery_notes': 'Left at door'
+        # Valid Dispatch
+        transition_parcel_status(p.pk, ParcelStatus.IN_TRANSIT, user=self.ops_mgr, truck_plate_number="KDA 555A", driver_name="Ali Driver")
+        p.refresh_from_db()
+        self.assertEqual(p.status, ParcelStatus.IN_TRANSIT)
+
+        # Illegal skip to COLLECTED
+        with self.assertRaises(ValidationError):
+            transition_parcel_status(p.pk, ParcelStatus.COLLECTED, user=self.dest_garissa)
+
+        # Valid Arrival
+        transition_parcel_status(p.pk, ParcelStatus.ARRIVED_AT_DESTINATION, user=self.dest_garissa)
+        p.refresh_from_db()
+        self.assertEqual(p.status, ParcelStatus.ARRIVED_AT_DESTINATION)
+
+        # Valid Stage for Collection
+        transition_parcel_status(p.pk, ParcelStatus.AWAITING_COLLECTION, user=self.dest_garissa)
+        p.refresh_from_db()
+        self.assertEqual(p.status, ParcelStatus.AWAITING_COLLECTION)
+
+        # Valid Collection
+        collect_parcel(p.pk, collected_by_name="Clinic Nurse", user=self.dest_garissa)
+        p.refresh_from_db()
+        self.assertEqual(p.status, ParcelStatus.COLLECTED)
+        self.assertEqual(p.collected_by_name, "Clinic Nurse")
+        self.assertIsNotNone(p.collected_at)
+
+        # Cannot collect twice (Idempotency)
+        with self.assertRaises(ValidationError):
+            collect_parcel(p.pk, collected_by_name="Another Person", user=self.dest_garissa)
+
+        # Terminal state cannot be changed or cancelled
+        with self.assertRaises(ValidationError):
+            cancel_parcel(p.pk, reason="Mistake", user=self.admin)
+
+    def test_object_level_branch_authorisation(self):
+        """Destination staff must ONLY access parcels destined for their assigned station."""
+        items = [{'description': 'Package', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('500.00')}]
+        p_mandera = create_parcel(
+            route=self.route_mandera, sender_name="Sender", sender_phone="0711111111",
+            receiver_name="Recv", receiver_phone="0722222222", receiver_id_number="12345678",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+            items_data=items, created_by=self.counter_clerk
+        )
+
+        # Garissa clerk attempts to view Mandera parcel
+        self.client.login(username="garissa_staff", password="Password123!")
+        response = self.client.get(reverse('parcel_detail', args=[p_mandera.tracking_number]))
+        self.assertEqual(response.status_code, 403)
+
+        # Mandera clerk can view Mandera parcel
+        self.client.login(username="mandera_staff", password="Password123!")
+        response = self.client.get(reverse('parcel_detail', args=[p_mandera.tracking_number]))
+        self.assertEqual(response.status_code, 200)
+
+    def test_public_tracking_privacy(self):
+        """Public tracking must NEVER expose price, payment status, receiver ID or driver phone."""
+        items = [{'description': 'Confidential Hardware', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('12500.00')}]
+        parcel = create_parcel(
+            route=self.route_garissa, sender_name="Confidential Sender", sender_phone="0711111111",
+            receiver_name="Confidential Receiver", receiver_phone="0722222222", receiver_id_number="87654321_PRIVATE_ID",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.MPESA,
+            items_data=items, created_by=self.counter_clerk
+        )
+
+        response = self.client.get(reverse('public_track', args=[parcel.tracking_number]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, parcel.tracking_number)
+        self.assertContains(response, parcel.route.name)
+
+        # Sensitive info must NOT be in public HTML
+        self.assertNotContains(response, "12500.00")
+        self.assertNotContains(response, "87654321_PRIVATE_ID")
+        self.assertNotContains(response, "MPESA")
+        self.assertNotContains(response, "PAID")
+
+    def test_public_tracking_rate_limiting(self):
+        cache.clear()
+        self.settings.tracking_rate_limit_per_minute = 5
+        self.settings.save()
+
+        for _ in range(5):
+            res = self.client.get(reverse('track_search'), {'tracking_number': 'NHT-NONEXIST'})
+            self.assertEqual(res.status_code, 200)
+
+        # 6th request triggers 429
+        res = self.client.get(reverse('track_search'), {'tracking_number': 'NHT-NONEXIST'})
+        self.assertEqual(res.status_code, 429)
+
+    def test_80mm_thermal_receipt_rendering_and_qr_code(self):
+        items = [{'description': 'Motor Spare', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('1500.00')}]
+        parcel = create_parcel(
+            route=self.route_garissa, sender_name="Ali", sender_phone="0711111111",
+            receiver_name="Hassan", receiver_phone="0722222222", receiver_id_number="12345678",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+            items_data=items, created_by=self.counter_clerk
+        )
+        self.client.login(username="clerk_p", password="Password123!")
+        response = self.client.get(reverse('parcel_receipt', args=[parcel.tracking_number]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "80mm")
+        self.assertContains(response, parcel.tracking_number)
+        self.assertContains(response, "Powered by BAGOVI TECHNOLOGIES")
+        # QR SVG present in output
+        self.assertContains(response, "<svg")
+
+    def test_counter_clerk_cannot_cancel_parcel(self):
+        items = [{'description': 'Books', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('100.00')}]
+        p = create_parcel(
+            route=self.route_garissa, sender_name="A", sender_phone="071",
+            receiver_name="B", receiver_phone="072", receiver_id_number="123",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+            items_data=items, created_by=self.counter_clerk
+        )
+        self.client.login(username="clerk_p", password="Password123!")
+        res = self.client.post(reverse('parcel_cancel', args=[p.tracking_number]), {'reason': 'Clerk cancel'})
+        self.assertEqual(res.status_code, 403)
+
+    def test_destination_staff_cannot_mark_arrival_for_other_route(self):
+        items = [{'description': 'Cargo', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('200.00')}]
+        p_mandera = create_parcel(
+            route=self.route_mandera, sender_name="A", sender_phone="071",
+            receiver_name="B", receiver_phone="072", receiver_id_number="123",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+            items_data=items, created_by=self.counter_clerk
+        )
+        transition_parcel_status(p_mandera.pk, ParcelStatus.IN_TRANSIT, self.ops_mgr, "Dispatched", "KAA 111A", "Driver")
+
+        # Garissa staff attempts to mark arrival on Mandera parcel
+        self.client.login(username="garissa_staff", password="Password123!")
+        res = self.client.post(reverse('parcel_arrive', args=[p_mandera.tracking_number]), {'note': 'Wrong depot arrival'})
+        self.assertEqual(res.status_code, 403)
+
+    def test_read_only_staff_cannot_dispatch_or_collect(self):
+        read_only = User.objects.create_user(
+            username="ro_p", phone="0733999999", password="Password123!",
+            role=Role.READ_ONLY, is_staff=True
+        )
+        items = [{'description': 'Tools', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('300.00')}]
+        p = create_parcel(
+            route=self.route_garissa, sender_name="A", sender_phone="071",
+            receiver_name="B", receiver_phone="072", receiver_id_number="123",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+            items_data=items, created_by=self.counter_clerk
+        )
+        self.client.login(username="ro_p", password="Password123!")
+        res = self.client.post(reverse('parcel_dispatch', args=[p.tracking_number]), {
+            'truck_plate_number': 'KCC 123A',
+            'driver_name': 'Driver Ali'
         })
-        parcel.refresh_from_db()
-        self.assertNotEqual(parcel.status, 'DELIVERED')
+        self.assertEqual(res.status_code, 403)
 
-        # Attempt with correct OTP
-        resp = self.client.post(reverse('courier_delivery_action', kwargs={'tracking_number': parcel.tracking_number}), {
-            'action': 'DELIVER',
-            'receiver_name': 'Bob Signee',
-            'security_otp': parcel.security_otp, # correct
-            'delivery_notes': 'Handed over directly to customer'
-        })
-        self.assertEqual(resp.status_code, 302)
+    def test_maximum_sensible_values_rejected(self):
+        # Quantity > 10,000
+        with self.assertRaises(ValidationError):
+            create_parcel(
+                route=self.route_garissa, sender_name="A", sender_phone="071",
+                receiver_name="B", receiver_phone="072", receiver_id_number="123",
+                payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+                items_data=[{'description': 'Massive', 'wrap_type': 'Box', 'quantity': 50000, 'unit_price': Decimal('10.00')}],
+                created_by=self.counter_clerk
+            )
 
-        parcel.refresh_from_db()
-        self.assertEqual(parcel.status, 'DELIVERED')
-        self.assertEqual(parcel.received_by_name, 'Bob Signee')
-        self.assertIsNotNone(parcel.delivered_at)
+        # Price > 10,000,000
+        with self.assertRaises(ValidationError):
+            create_parcel(
+                route=self.route_garissa, sender_name="A", sender_phone="071",
+                receiver_name="B", receiver_phone="072", receiver_id_number="123",
+                payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+                items_data=[{'description': 'Super Expensive', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('99999999.00')}],
+                created_by=self.counter_clerk
+            )
 
-    def test_public_track_view(self):
-        """Test public tracking view returns 200 and displays parcel details."""
-        parcel = Parcel.objects.create(
-            sender_name='Alice', sender_phone='111', sender_address='NYC', sender_city='New York',
-            receiver_name='Bob', receiver_phone='222', receiver_address='LAX', receiver_city='LA',
-            origin_branch=self.branch_nyc, destination_branch=self.branch_lax,
-            weight_kg=Decimal('1.0'), item_description='Test item'
+    def test_admin_override_post_dispatch(self):
+        from audit.models import AuditLog
+        items = [{'description': 'Solar Inverter', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('8500.00')}]
+        p = create_parcel(
+            route=self.route_garissa, sender_name="Original Sender", sender_phone="0711111111",
+            receiver_name="Original Recv", receiver_phone="0722222222", receiver_id_number="12345678",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+            items_data=items, created_by=self.counter_clerk
         )
-        parcel.calculate_pricing()
-        parcel.save()
+        transition_parcel_status(p.pk, ParcelStatus.IN_TRANSIT, self.ops_mgr, "Dispatched", "KAA 111A", "Driver Ali")
 
-        resp = self.client.get(reverse('track_detail', kwargs={'tracking_number': parcel.tracking_number}))
-        self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, parcel.tracking_number)
-        self.assertContains(resp, 'Bob')
+        self.client.login(username="admin_p", password="Password123!")
 
-    def test_api_rate_calculator(self):
-        """Test JSON rate calculator API."""
-        resp = self.client.get(reverse('api_calculate_rate'), {
-            'service_type': 'STANDARD',
-            'weight_kg': '2.0',
-            'length_cm': '10',
-            'width_cm': '10',
-            'height_cm': '10',
-            'is_fragile': 'false',
-            'declared_value': '0'
+        # 1. When setting is False -> override blocked
+        self.settings.allow_superuser_edit_after_dispatch = False
+        self.settings.save()
+        res = self.client.get(reverse('parcel_override', args=[p.tracking_number]))
+        self.assertEqual(res.status_code, 302)
+
+        # 2. When setting is True -> override allowed with reason and audit log
+        self.settings.allow_superuser_edit_after_dispatch = True
+        self.settings.save()
+        res = self.client.post(reverse('parcel_override', args=[p.tracking_number]), {
+            'route': self.route_garissa.pk,
+            'truck_plate_number': 'KAA 111A',
+            'driver_name': 'Driver Ali',
+            'sender_name': 'Corrected Sender Name',
+            'sender_phone': '0711111111',
+            'receiver_name': 'Original Recv',
+            'receiver_phone': '0722222222',
+            'receiver_id_number': '12345678',
+            'payment_status': PaymentStatus.PAID,
+            'payment_method': PaymentMethod.CASH,
+            'price': '8500.00',
+            'reason': 'Customer requested correction of spelling mistake in sender name'
         })
-        self.assertEqual(resp.status_code, 200)
-        data = resp.json()
-        self.assertIn('total_price', data)
-        self.assertEqual(data['base_price'], 5.0)
+        self.assertEqual(res.status_code, 302)
+        p.refresh_from_db()
+        self.assertEqual(p.sender_name, 'Corrected Sender Name')
+        self.assertTrue(AuditLog.objects.filter(action='ADMIN_OVERRIDE', object_identifier=p.tracking_number).exists())
+
+    def test_csrf_protection_enforced(self):
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.login(username="clerk_p", password="Password123!")
+        # POST without CSRF token should return 403 Forbidden
+        response = csrf_client.post(reverse('parcel_create'), {
+            'sender_name': 'Attacker',
+        })
+        self.assertEqual(response.status_code, 403)
+
+    def test_inactive_route_not_in_parcel_form(self):
+        inactive_route = Route.objects.create(name="Inactive Station", is_active=False)
+        form = ParcelForm()
+        available_routes = list(form.fields['route'].queryset)
+        self.assertNotIn(inactive_route, available_routes)
+        self.assertIn(self.route_garissa, available_routes)
+
+    def test_qr_code_contains_only_public_tracking_url(self):
+        tracking_url = f"https://northernhighways.co.ke/track/NHT-12345678/"
+        svg_output = generate_tracking_qr_svg(tracking_url)
+        self.assertTrue(svg_output.startswith("<svg") or "<svg" in svg_output)
+        # Verify it does not embed sensitive strings
+        self.assertNotIn("KES", svg_output)
+        self.assertNotIn("PAID", svg_output)
+        self.assertNotIn("MPESA", svg_output)
+
+    def test_create_shipment_form_renders_single_item_form(self):
+        self.client.login(username="clerk_p", password="Password123!")
+        res = self.client.get(reverse('parcel_create'))
+        self.assertEqual(res.status_code, 200)
+        formset = res.context['formset']
+        # Must show exactly 1 item form by default instead of multiple compulsory forms
+        self.assertEqual(len(formset.forms), 1)
+        self.assertEqual(formset.total_form_count(), 1)
+
+

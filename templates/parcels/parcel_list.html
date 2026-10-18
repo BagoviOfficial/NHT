@@ -1,161 +1,176 @@
 {% extends 'base.html' %}
 
-{% block title %}Consignment Registry - SwiftParcel PMS{% endblock %}
+{% block title %}Shipments Directory — {{ COMPANY_NAME }}{% endblock %}
 
 {% block content %}
-<div class="py-8 bg-slate-50 min-h-screen">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-6 border-b border-slate-200 mb-6 gap-4">
-      <div>
-        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Consignment Registry</h1>
-        <p class="text-xs text-slate-500 mt-1">Found {{ total_count }} total consignments in PostgreSQL database</p>
-      </div>
-      <a href="{% url 'parcel_create' %}" class="inline-flex items-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm shadow-blue-500/30 transition">
-        <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i> Book New Consignment
-      </a>
-    </div>
-
-    <!-- Filters Bar -->
-    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6">
-      <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
-        
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Search Keyword</label>
-          <input type="text" name="search" value="{{ search }}" placeholder="Tracking #, Name, Phone..." class="input-control text-xs">
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Status</label>
-          <select name="status" class="select-control text-xs">
-            <option value="">All Statuses</option>
-            {% for code, label in status_choices %}
-              <option value="{{ code }}" {% if selected_status == code %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Hub / Branch</label>
-          <select name="branch" class="select-control text-xs">
-            <option value="">All Branches</option>
-            {% for b in branches %}
-              <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"s" %}selected{% endif %}>{{ b.name }} ({{ b.code }})</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-700 mb-1">Payment Status</label>
-          <select name="payment" class="select-control text-xs">
-            <option value="">All Payments</option>
-            {% for code, label in payment_choices %}
-              <option value="{{ code }}" {% if selected_payment == code %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="flex items-end space-x-2">
-          <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition flex items-center justify-center">
-            <i data-lucide="filter" class="w-3.5 h-3.5 mr-1"></i> Apply Filter
-          </button>
-          <a href="{% url 'parcel_list' %}" class="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-center" title="Reset Filters">
-            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline"></i>
-          </a>
-        </div>
-
-      </form>
-    </div>
-
-    <!-- Table -->
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-          <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase tracking-wider">
-            <tr>
-              <th class="py-3.5 px-4">Consignment #</th>
-              <th class="py-3.5 px-4">Sender & Receiver</th>
-              <th class="py-3.5 px-4">Origin / Dest Hub</th>
-              <th class="py-3.5 px-4">Service & Specs</th>
-              <th class="py-3.5 px-4">Status</th>
-              <th class="py-3.5 px-4">Financials</th>
-              <th class="py-3.5 px-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            {% for p in page_obj %}
-              <tr class="hover:bg-slate-50/80 transition">
-                <td class="py-3.5 px-4 font-mono">
-                  <a href="{% url 'parcel_detail' tracking_number=p.tracking_number %}" class="font-bold text-blue-600 hover:underline">
-                    {{ p.tracking_number }}
-                  </a>
-                  <div class="text-[10px] text-slate-400 mt-0.5">{{ p.created_at|date:"M d, Y" }}</div>
-                </td>
-                <td class="py-3.5 px-4">
-                  <div class="font-bold text-slate-900">{{ p.receiver_name }}</div>
-                  <div class="text-[11px] text-slate-500">From: {{ p.sender_name }}</div>
-                </td>
-                <td class="py-3.5 px-4">
-                  <span class="font-semibold text-slate-800">{{ p.origin_branch.code }}</span>
-                  <span class="text-slate-400 mx-1">&rarr;</span>
-                  <span class="font-semibold text-slate-800">{{ p.destination_branch.code }}</span>
-                  <div class="text-[10px] text-slate-400 mt-0.5">Current: {{ p.current_branch.name|default:"In Linehaul" }}</div>
-                </td>
-                <td class="py-3.5 px-4">
-                  <span class="font-semibold text-slate-800">{{ p.get_service_type_display }}</span>
-                  <div class="text-[11px] text-slate-500">{{ p.weight_kg }} kg &bull; {{ p.get_category_display }}</div>
-                </td>
-                <td class="py-3.5 px-4">
-                  <span class="px-2.5 py-1 rounded-full font-semibold {{ p.status_badge_class }}">
-                    {{ p.get_status_display }}
-                  </span>
-                </td>
-                <td class="py-3.5 px-4">
-                  <div class="font-bold text-slate-900">${{ p.total_price }}</div>
-                  <span class="text-[10px] font-bold px-1.5 py-0.2 rounded {% if p.payment_status == 'PAID' %}bg-emerald-50 text-emerald-700{% else %}bg-amber-50 text-amber-700{% endif %}">
-                    {{ p.get_payment_status_display }}
-                  </span>
-                </td>
-                <td class="py-3.5 px-4 text-right space-x-2">
-                  <a href="{% url 'parcel_detail' tracking_number=p.tracking_number %}" class="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded font-semibold transition" title="Manage Consignment">
-                    Manage
-                  </a>
-                  <a href="{% url 'parcel_waybill' tracking_number=p.tracking_number %}" target="_blank" class="px-2 py-1 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded transition" title="Print Waybill Label">
-                    <i data-lucide="printer" class="w-3.5 h-3.5 inline"></i>
-                  </a>
-                </td>
-              </tr>
-            {% empty %}
-              <tr>
-                <td colspan="7" class="py-12 text-center text-slate-400">
-                  <i data-lucide="package-search" class="w-10 h-10 mx-auto text-slate-300 mb-2"></i>
-                  <p class="font-semibold">No consignments matched your filters.</p>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Pagination -->
-      {% if page_obj.has_other_pages %}
-        <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
-          <div>
-            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-          </div>
-          <div class="flex space-x-1">
-            {% if page_obj.has_previous %}
-              <a href="?page={{ page_obj.previous_page_number }}&search={{ search }}&status={{ selected_status }}&branch={{ selected_branch }}&payment={{ selected_payment }}" class="px-3 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100">Previous</a>
-            {% endif %}
-            {% if page_obj.has_next %}
-              <a href="?page={{ page_obj.next_page_number }}&search={{ search }}&status={{ selected_status }}&branch={{ selected_branch }}&payment={{ selected_payment }}" class="px-3 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100">Next</a>
-            {% endif %}
-          </div>
-        </div>
-      {% endif %}
-    </div>
-
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+  <div>
+    <h3 class="fw-bold mb-1">Consignment Shipments</h3>
+    <p class="text-secondary small mb-0">Search, filter, and track bus parcel shipments</p>
   </div>
+  {% if user.can_create_parcel %}
+    <a href="{% url 'parcel_create' %}" class="btn btn-primary fw-semibold mt-2 mt-sm-0">
+      <i class="bi bi-plus-circle-fill me-1"></i> Register New Parcel
+    </a>
+  {% endif %}
+</div>
+
+<!-- Filter Bar (Section 26) -->
+<div class="card card-nht p-3 mb-4 shadow-sm">
+  <form method="get" class="row g-2 align-items-center">
+    <div class="col-md-4 col-sm-6">
+      <label class="form-label small fw-semibold text-secondary mb-1">Search Keywords</label>
+      <div class="input-group">
+        <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+        <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Tracking #, name, phone, plate...">
+      </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+      <label class="form-label small fw-semibold text-secondary mb-1">Destination Route</label>
+      <select name="route" class="form-select">
+        <option value="">-- All Destination Routes --</option>
+        {% for r in routes %}
+          <option value="{{ r.id }}" {% if route_filter == r.id|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+      <label class="form-label small fw-semibold text-secondary mb-1">Status</label>
+      <select name="status" class="form-select">
+        <option value="">-- All Lifecycle Statuses --</option>
+        {% for st_val, st_lbl in statuses %}
+          <option value="{{ st_val }}" {% if status_filter == st_val %}selected{% endif %}>{{ st_lbl }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% if user.can_view_financials %}
+      <div class="col-md-2 col-sm-6">
+        <label class="form-label small fw-semibold text-secondary mb-1">Payment</label>
+        <select name="payment_status" class="form-select">
+          <option value="">-- All Payment --</option>
+          {% for pay_val, pay_lbl in payment_statuses %}
+            <option value="{{ pay_val }}" {% if payment_status_filter == pay_val %}selected{% endif %}>{{ pay_lbl }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    {% endif %}
+
+    <div class="col-12 d-flex justify-content-end gap-2 mt-3">
+      <a href="{% url 'parcel_list' %}" class="btn btn-outline-secondary btn-sm">Reset Filters</a>
+      <button type="submit" class="btn btn-primary btn-sm px-4 fw-semibold">Apply Filters</button>
+    </div>
+  </form>
+</div>
+
+<!-- Shipments Table -->
+<div class="card card-nht shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light small text-uppercase text-secondary">
+        <tr>
+          <th>Tracking #</th>
+          <th>Route</th>
+          <th>Sender</th>
+          <th>Receiver</th>
+          <th>Assigned Vehicle</th>
+          <th>Status</th>
+          {% if user.can_view_financials %}
+            <th>Payment</th>
+            <th>Amount</th>
+          {% endif %}
+          <th>Registered</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in page_obj %}
+          <tr>
+            <td>
+              <a href="{% url 'parcel_detail' p.tracking_number %}" class="fw-bold text-decoration-none">
+                {{ p.tracking_number }}
+              </a>
+            </td>
+            <td>
+              <span class="badge bg-light text-dark border">{{ p.route.name }}</span>
+            </td>
+            <td>
+              <div class="fw-medium text-dark">{{ p.sender_name }}</div>
+              <small class="text-muted">{{ p.sender_phone }}</small>
+            </td>
+            <td>
+              <div class="fw-medium text-dark">{{ p.receiver_name }}</div>
+              <small class="text-muted">{{ p.receiver_phone }}</small>
+            </td>
+            <td>
+              {% if p.truck_plate_number %}
+                <span class="fw-semibold text-dark">{{ p.truck_plate_number }}</span>
+                <small class="text-muted d-block">{{ p.driver_name }}</small>
+              {% else %}
+                <span class="text-muted italic small">Unassigned</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge {{ p.status_badge_class }}">{{ p.get_status_display }}</span>
+            </td>
+            {% if user.can_view_financials %}
+              <td>
+                <span class="badge {% if p.payment_status == 'PAID' %}bg-success{% elif p.payment_status == 'COD' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                  {{ p.get_payment_status_display }}
+                </span>
+              </td>
+              <td class="fw-bold text-dark">{{ CURRENCY }} {{ p.price|floatformat:2 }}</td>
+            {% endif %}
+            <td class="small text-muted">{{ p.created_at|date:"d M Y, H:i" }}</td>
+            <td class="text-end">
+              <div class="btn-group btn-group-sm">
+                <a href="{% url 'parcel_detail' p.tracking_number %}" class="btn btn-outline-primary" title="Details">
+                  View
+                </a>
+                <a href="{% url 'parcel_receipt' p.tracking_number %}" class="btn btn-outline-secondary" title="Thermal Waybill Receipt">
+                  <i class="bi bi-printer"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="10" class="text-center py-5 text-muted">
+              <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+              No consignments found matching the selected criteria.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white d-flex justify-content-between align-items-center py-3">
+      <span class="small text-muted">
+        Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} consignments
+      </span>
+      <nav>
+        <ul class="pagination pagination-sm mb-0">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&route={{ route_filter }}&status={{ status_filter }}&payment_status={{ payment_status_filter }}">Previous</a>
+            </li>
+          {% endif %}
+          <li class="page-item active">
+            <span class="page-link">{{ page_obj.number }}</span>
+          </li>
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&route={{ route_filter }}&status={{ status_filter }}&payment_status={{ payment_status_filter }}">Next</a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

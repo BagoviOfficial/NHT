@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Track Consignment {{ track_code }} — {{ COMPANY_NAME }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-lg-8">
+
+    <!-- Search Form -->
+    <div class="card card-nht p-3 mb-4 shadow-sm">
+      <form method="get" action="{% url 'track_search' %}" class="row g-2 align-items-center">
+        <div class="col-md-9 col-sm-8 col-12">
+          <div class="input-group">
+            <span class="input-group-text bg-light"><i class="bi bi-search text-primary"></i></span>
+            <input type="text" name="tracking_number" value="{{ track_code }}" class="form-control" placeholder="Enter tracking number (e.g. NHT-XXXXXXXX)" required>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-4 col-12 d-grid">
+          <button type="submit" class="btn btn-primary fw-semibold">Track</button>
+        </div>
+      </form>
+    </div>
+
+    {% if not_found %}
+      <!-- Generic Not Found Message (Resistant to Enumeration) -->
+      <div class="card card-nht p-5 text-center shadow-sm">
+        <div class="d-inline-flex p-3 rounded-circle bg-danger bg-opacity-10 text-danger mx-auto mb-3">
+          <i class="bi bi-question-circle fs-1"></i>
+        </div>
+        <h4 class="fw-bold text-dark">Consignment Not Found</h4>
+        <p class="text-secondary mb-3">
+          No consignment was found matching tracking number "<strong>{{ track_code }}</strong>".
+        </p>
+        <p class="small text-muted mb-0">
+          Please check the 8-character number printed on your waybill or contact customer care at {{ SUPPORT_PHONE }}.
+        </p>
+      </div>
+
+    {% elif parcel %}
+      <!-- Safe Public Tracking Information -->
+      <div class="card card-nht shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center">
+          <div>
+            <span class="text-secondary small text-uppercase fw-bold">Tracking Number</span>
+            <h3 class="fw-bold mb-0 text-primary">{{ parcel.tracking_number }}</h3>
+          </div>
+          <div class="mt-2 mt-sm-0">
+            <span class="badge {{ parcel.status_badge_class }} px-3 py-2 fs-6 rounded-pill">
+              {{ parcel.get_status_display }}
+            </span>
+          </div>
+        </div>
+
+        <div class="card-body p-4">
+          <div class="row g-3 mb-4 pb-3 border-bottom">
+            <div class="col-sm-6">
+              <span class="text-secondary small d-block">Origin Dispatch Station</span>
+              <strong class="fs-6 text-dark"><i class="bi bi-geo-alt text-primary me-1"></i> Nairobi Head Office</strong>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-secondary small d-block">Destination Station</span>
+              <strong class="fs-6 text-dark"><i class="bi bi-geo-alt-fill text-danger me-1"></i> {{ parcel.route.name }}</strong>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-secondary small d-block">Booking Date</span>
+              <span class="text-dark">{{ parcel.created_at|date:"D, d M Y, H:i" }}</span>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-secondary small d-block">Last Updated</span>
+              <span class="text-dark">{{ parcel.updated_at|date:"D, d M Y, H:i" }}</span>
+            </div>
+          </div>
+
+          <!-- Public Status Timeline -->
+          <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 text-primary me-2"></i>Movement Timeline</h5>
+          <div class="timeline ps-2">
+            {% for event in parcel.status_history.all %}
+              <div class="d-flex mb-3">
+                <div class="me-3 text-center" style="width: 28px;">
+                  <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                </div>
+                <div class="pb-2 border-bottom flex-grow-1">
+                  <div class="fw-bold text-dark">{{ event.new_status }}</div>
+                  <div class="small text-muted">{{ event.created_at|date:"d M Y, H:i" }}</div>
+                </div>
+              </div>
+            {% empty %}
+              <p class="text-muted small">No movement events logged yet.</p>
+            {% endfor %}
+          </div>
+
+          {% if parcel.status == 'AWAITING_COLLECTION' %}
+            <div class="alert alert-info d-flex align-items-center mt-3" role="alert">
+              <i class="bi bi-info-circle-fill fs-4 me-2"></i>
+              <div>
+                <strong>Ready for Pickup:</strong> This parcel is awaiting collection at our {{ parcel.route.name }} booking station. The receiver must present their original National ID or Passport.
+              </div>
+            </div>
+          {% elif parcel.status == 'COLLECTED' %}
+            <div class="alert alert-success d-flex align-items-center mt-3" role="alert">
+              <i class="bi bi-check-circle-fill fs-4 me-2"></i>
+              <div>
+                <strong>Parcel Delivered:</strong> This consignment was collected on {{ parcel.collected_at|date:"d M Y, H:i" }}.
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+    {% else %}
+      <div class="card card-nht p-4 text-center">
+        <p class="text-muted mb-0">Please enter a tracking number above to look up parcel status.</p>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

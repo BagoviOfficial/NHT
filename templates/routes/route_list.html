@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Transit Routes — {{ COMPANY_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+  <div>
+    <h3 class="fw-bold mb-1">Transit Route Stations</h3>
+    <p class="text-secondary small mb-0">Manage Northern Kenya corridor destinations served from Nairobi Head Office</p>
+  </div>
+  <div class="d-flex gap-2 mt-2 mt-sm-0">
+    <a href="{% url 'route_create' %}" class="btn btn-primary fw-semibold btn-sm">
+      <i class="bi bi-plus-lg me-1"></i> Add Transit Route
+    </a>
+    <a href="{% url 'admin_panel' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i> Admin Hub
+    </a>
+  </div>
+</div>
+
+<div class="card card-nht shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light small text-uppercase text-secondary">
+        <tr>
+          <th>Origin</th>
+          <th>Destination Route</th>
+          <th>Slug</th>
+          <th>Notes / Corridor</th>
+          <th class="text-center">Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in routes %}
+          <tr>
+            <td class="fw-semibold text-secondary">{{ r.origin }}</td>
+            <td class="fw-bold text-dark fs-6">
+              <i class="bi bi-geo-alt-fill text-danger me-1"></i> {{ r.name }}
+            </td>
+            <td><code>{{ r.slug }}</code></td>
+            <td class="small text-muted">{{ r.description|default:"-" }}</td>
+            <td class="text-center">
+              {% if r.is_active %}
+                <span class="badge bg-success-subtle text-success">Active Station</span>
+              {% else %}
+                <span class="badge bg-secondary-subtle text-secondary">Inactive</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <div class="btn-group btn-group-sm">
+                <a href="{% url 'route_update' r.pk %}" class="btn btn-outline-primary" title="Edit Route">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <form method="post" action="{% url 'route_toggle' r.pk %}" class="d-inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-secondary" title="Toggle active status">
+                    {% if r.is_active %}
+                      <i class="bi bi-toggle-on text-success"></i>
+                    {% else %}
+                      <i class="bi bi-toggle-off text-muted"></i>
+                    {% endif %}
+                  </button>
+                </form>
+                {% if r.can_be_deleted %}
+                  <form method="post" action="{% url 'route_delete' r.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger" title="Delete Unused Route" onclick="return confirm('Delete route {{ r.name }}?')">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="text-center py-4 text-muted">No routes configured.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

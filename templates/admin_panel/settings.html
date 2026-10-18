@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}Company Settings — {{ COMPANY_NAME }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-3">
+  <div class="col-lg-8">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h3 class="fw-bold mb-1">Company & System Settings</h3>
+        <p class="text-secondary small mb-0">Manage operational parameters, receipt texts, and security rules</p>
+      </div>
+      <a href="{% url 'admin_panel' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> Admin Hub
+      </a>
+    </div>
+
+    <div class="card card-nht shadow-sm p-4">
+      <form method="post">
+        {% csrf_token %}
+
+        <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary">Company Profile & Branding</h5>
+        <div class="row g-3 mb-4">
+          <div class="col-md-8">
+            <label class="form-label small fw-semibold text-secondary">Company Name *</label>
+            {{ form.company_name }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold text-secondary">Currency Code (ISO) *</label>
+            {{ form.currency }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold text-secondary">Central Origin Terminal *</label>
+            {{ form.head_office }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold text-secondary">Customer Care Phone</label>
+            {{ form.support_phone }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold text-secondary">Customer Care Email</label>
+            {{ form.support_email }}
+          </div>
+        </div>
+
+        <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary">80mm Thermal Receipt Text</h5>
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-secondary">Receipt Header</label>
+            {{ form.receipt_header }}
+            <small class="text-muted">Lines printed at top of thermal slip.</small>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-secondary">Receipt Footer & Terms</label>
+            {{ form.receipt_footer }}
+            <small class="text-muted">Terms and conditions printed at bottom.</small>
+          </div>
+        </div>
+
+        <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary">Public Portal Text</h5>
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-secondary">About / Company Overview</label>
+            {{ form.about_text }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-secondary">Help & Support Guidance</label>
+            {{ form.help_text }}
+          </div>
+        </div>
+
+        <h5 class="fw-bold mb-3 border-bottom pb-2 text-danger">Security & Operational Controls</h5>
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold text-secondary">Public Tracking Rate Limit (req/min/IP)</label>
+            {{ form.tracking_rate_limit_per_minute }}
+            <small class="text-muted">Protection against automated tracking code enumeration.</small>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check mt-md-4 pt-md-2">
+              {{ form.allow_superuser_edit_after_dispatch }}
+              <label class="form-check-label fw-semibold text-dark" for="{{ form.allow_superuser_edit_after_dispatch.id_for_label }}">
+                Allow Super Admin Post-Dispatch Overrides
+              </label>
+              <small class="text-muted d-block">If enabled, Super Admin may modify shipments in transit with mandatory audit reason.</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+          <a href="{% url 'admin_panel' %}" class="btn btn-light border">Cancel</a>
+          <button type="submit" class="btn btn-primary px-4 fw-semibold">
+            <i class="bi bi-save me-1"></i> Save Settings
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

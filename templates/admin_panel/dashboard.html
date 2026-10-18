@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Panel Hub — {{ COMPANY_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h3 class="fw-bold mb-1">Administrative Control Hub</h3>
+    <p class="text-secondary small mb-0">System configuration, security settings, users, and audit logs</p>
+  </div>
+  <span class="badge bg-danger px-3 py-2 fs-6">Super Admin Area</span>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-6 col-lg-4">
+    <div class="card card-nht h-100 p-4">
+      <div class="d-flex align-items-center mb-3">
+        <div class="p-3 bg-primary bg-opacity-10 text-primary rounded-3 me-3">
+          <i class="bi bi-people-fill fs-3"></i>
+        </div>
+        <div>
+          <h5 class="fw-bold mb-0">Staff & Users</h5>
+          <small class="text-muted">Manage RBAC roles & accounts</small>
+        </div>
+      </div>
+      <p class="text-secondary small mb-4">
+        Create staff accounts, assign operational roles, bind destination staff to specific routes, and reset staff passwords.
+      </p>
+      <a href="{% url 'admin_panel_users' %}" class="btn btn-outline-primary mt-auto fw-semibold">
+        Manage Staff Users &rarr;
+      </a>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-lg-4">
+    <div class="card card-nht h-100 p-4">
+      <div class="d-flex align-items-center mb-3">
+        <div class="p-3 bg-success bg-opacity-10 text-success rounded-3 me-3">
+          <i class="bi bi-signpost-split-fill fs-3"></i>
+        </div>
+        <div>
+          <h5 class="fw-bold mb-0">Transit Routes</h5>
+          <small class="text-muted">Origin & destination stations</small>
+        </div>
+      </div>
+      <p class="text-secondary small mb-4">
+        Configure northern corridor destinations: Garissa, Wajir, Kotulo, Elwak, Rhamu, Lafey, Arabia, and Mandera.
+      </p>
+      <a href="{% url 'route_list' %}" class="btn btn-outline-success mt-auto fw-semibold">
+        Manage Routes &rarr;
+      </a>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-lg-4">
+    <div class="card card-nht h-100 p-4">
+      <div class="d-flex align-items-center mb-3">
+        <div class="p-3 bg-warning bg-opacity-10 text-warning rounded-3 me-3">
+          <i class="bi bi-sliders fs-3"></i>
+        </div>
+        <div>
+          <h5 class="fw-bold mb-0">Dynamic Form Fields</h5>
+          <small class="text-muted">FieldConfig & ChoiceConfig</small>
+        </div>
+      </div>
+      <p class="text-secondary small mb-4">
+        Customize labels, placeholders, required statuses, and package wrap dropdown values safely without arbitrary code.
+      </p>
+      <a href="{% url 'admin_panel_config' %}" class="btn btn-outline-warning text-dark mt-auto fw-semibold">
+        Configure Fields &rarr;
+      </a>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-lg-4">
+    <div class="card card-nht h-100 p-4">
+      <div class="d-flex align-items-center mb-3">
+        <div class="p-3 bg-info bg-opacity-10 text-info rounded-3 me-3">
+          <i class="bi bi-gear-fill fs-3"></i>
+        </div>
+        <div>
+          <h5 class="fw-bold mb-0">Company Settings</h5>
+          <small class="text-muted">Receipts, policies, & currency</small>
+        </div>
+      </div>
+      <p class="text-secondary small mb-4">
+        Edit company name, currency, hotline, receipt headers & footers, rate limits, and post-dispatch override policies.
+      </p>
+      <a href="{% url 'admin_panel_settings' %}" class="btn btn-outline-info text-dark mt-auto fw-semibold">
+        Edit Settings &rarr;
+      </a>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-lg-4">
+    <div class="card card-nht h-100 p-4">
+      <div class="d-flex align-items-center mb-3">
+        <div class="p-3 bg-danger bg-opacity-10 text-danger rounded-3 me-3">
+          <i class="bi bi-shield-check fs-3"></i>
+        </div>
+        <div>
+          <h5 class="fw-bold mb-0">Audit Logging</h5>
+          <small class="text-muted">Permanent security trail</small>
+        </div>
+      </div>
+      <p class="text-secondary small mb-4">
+        Inspect all security-sensitive actions: logins, failed attempts, consignment updates, cancellations, and overrides.
+      </p>
+      <a href="{% url 'admin_panel_audit' %}" class="btn btn-outline-danger mt-auto fw-semibold">
+        View Audit Trail &rarr;
+      </a>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-lg-4">
+    <div class="card card-nht h-100 p-4">
+      <div class="d-flex align-items-center mb-3">
+        <div class="p-3 bg-secondary bg-opacity-10 text-secondary rounded-3 me-3">
+          <i class="bi bi-terminal-fill fs-3"></i>
+        </div>
+        <div>
+          <h5 class="fw-bold mb-0">Django Admin</h5>
+          <small class="text-muted">Secondary administration</small>
+        </div>
+      </div>
+      <p class="text-secondary small mb-4">
+        Built-in Django administrative backend for raw database model maintenance and object-level inspecting.
+      </p>
+      <a href="/admin/" class="btn btn-outline-secondary mt-auto fw-semibold" target="_blank">
+        Open Django Admin &rarr;
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

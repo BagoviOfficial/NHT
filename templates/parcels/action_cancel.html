@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}Cancel Consignment {{ parcel.tracking_number }} — {{ COMPANY_NAME }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-md-6">
+    <div class="card card-nht shadow-sm border-danger">
+      <div class="card-header bg-danger text-white py-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-x-circle-fill me-2"></i>Cancel Consignment Shipment</h5>
+      </div>
+      <div class="card-body p-4">
+        <div class="alert alert-light border mb-4">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-secondary small">Tracking Code:</span>
+            <strong class="text-primary">{{ parcel.tracking_number }}</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-secondary small">Destination Route:</span>
+            <strong>{{ parcel.route.name }}</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-secondary small">Current Status:</span>
+            <span class="badge {{ parcel.status_badge_class }}">{{ parcel.get_status_display }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-secondary small">Booking Total:</span>
+            <strong>{{ CURRENCY }} {{ parcel.price|floatformat:2 }}</strong>
+          </div>
+        </div>
+
+        <p class="text-danger small">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i>
+          <strong>Warning:</strong> Cancellation is a terminal status change and will be logged in the permanent audit trail.
+        </p>
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-4">
+            <label class="form-label fw-semibold text-secondary small">Mandatory Cancellation Reason *</label>
+            {{ form.reason }}
+            {% if form.reason.errors %}<div class="text-danger small mt-1">{{ form.reason.errors.0 }}</div>{% endif %}
+            <small class="text-muted">Specify why this consignment is being cancelled (e.g. sender request, damaged contents, wrong route).</small>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'parcel_detail' parcel.tracking_number %}" class="btn btn-light border">Go Back</a>
+            <button type="submit" class="btn btn-danger fw-semibold px-4" onclick="return confirm('Are you sure you want to cancel this consignment? This action cannot be reversed.')">
+              <i class="bi bi-x-circle me-1"></i> Confirm Cancellation
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

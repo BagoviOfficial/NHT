@@ -1,0 +1,22 @@
+# ==============================================================================
+# Northern Highways Transporters — Parcel Management System (PMS)
+# Production Dependencies
+# ==============================================================================
+
+# Core Web Framework
+Django>=5.0.0,<6.2.0
+
+# PostgreSQL Database Driver (psycopg 3: Modern, thread-safe, secure DB-API driver)
+psycopg>=3.1.0,<4.0.0
+
+# Twelve-Factor Application Environment Variables Configuration
+django-environ>=0.11.0,<1.0.0
+
+# PDF Generation Engine for Daily Waybill & Consignment Statements (A4)
+fpdf2>=2.8.0,<3.0.0
+
+# Vector SVG QR Code Engine for 80mm Thermal Receipt Generation (No binary dependencies)
+qrcode>=8.0.0,<9.0.0
+
+# IANA Time Zone Database for Accurate Africa/Nairobi DateTime calculations
+tzdata>=2024.1
