@@ -28,7 +28,7 @@ def route_create_view(request):
         return redirect('route_list')
 
     if request.method == 'POST':
-        form = RouteForm(request.POST)
+        form = RouteForm(request.POST, tenant=tenant)
         if form.is_valid():
             route = form.save(commit=False)
             route.tenant = tenant
@@ -49,7 +49,7 @@ def route_create_view(request):
         initial = {}
         if tenant:
             initial['origin'] = tenant.head_office
-        form = RouteForm(initial=initial)
+        form = RouteForm(initial=initial, tenant=tenant)
     return render(request, 'routes/route_form.html', {'form': form, 'title': 'Add Transit Route'})
 
 
@@ -57,21 +57,24 @@ def route_create_view(request):
 def route_update_view(request, pk):
     tenant = getattr(request, 'tenant', None) or getattr(request.user, 'tenant', None)
     route = get_object_or_404(Route, pk=pk)
-    if tenant and route.tenant_id and route.tenant_id != tenant.id:
+    if request.user.tenant and route.tenant_id != request.user.tenant_id:
+        raise PermissionDenied("Access denied to this route.")
+    elif tenant and not request.user.is_superuser and route.tenant_id != tenant.id:
         raise PermissionDenied("Access denied to this route.")
 
     if request.method == 'POST':
-        form = RouteForm(request.POST, instance=route)
+        form = RouteForm(request.POST, instance=route, tenant=tenant)
         if form.is_valid():
-            old_vals = {'name': route.name, 'is_active': route.is_active}
+            old_vals = {f: form.initial.get(f) for f in form.changed_data}
             route = form.save()
+            new_vals = {f: getattr(route, f) for f in form.changed_data}
             log_audit_event(
                 action='ROUTE_UPDATE',
                 actor=request.user,
                 object_type='Route',
                 object_identifier=str(route.name),
                 old_values=old_vals,
-                new_values={'name': route.name, 'is_active': route.is_active},
+                new_values=new_vals,
                 reason="Updated transit route",
                 request=request,
                 tenant=tenant
@@ -79,7 +82,7 @@ def route_update_view(request, pk):
             messages.success(request, f"Route '{route}' updated successfully.")
             return redirect('route_list')
     else:
-        form = RouteForm(instance=route)
+        form = RouteForm(instance=route, tenant=tenant)
     return render(request, 'routes/route_form.html', {'form': form, 'route': route, 'title': f'Edit Route {route.name}'})
 
 
@@ -88,7 +91,9 @@ def route_toggle_view(request, pk):
     tenant = getattr(request, 'tenant', None) or getattr(request.user, 'tenant', None)
     if request.method == 'POST':
         route = get_object_or_404(Route, pk=pk)
-        if tenant and route.tenant_id and route.tenant_id != tenant.id:
+        if request.user.tenant and route.tenant_id != request.user.tenant_id:
+            raise PermissionDenied("Access denied to this route.")
+        elif tenant and not request.user.is_superuser and route.tenant_id != tenant.id:
             raise PermissionDenied("Access denied to this route.")
         route.is_active = not route.is_active
         route.save()
@@ -111,7 +116,9 @@ def route_toggle_view(request, pk):
 def route_delete_view(request, pk):
     tenant = getattr(request, 'tenant', None) or getattr(request.user, 'tenant', None)
     route = get_object_or_404(Route, pk=pk)
-    if tenant and route.tenant_id and route.tenant_id != tenant.id:
+    if request.user.tenant and route.tenant_id != request.user.tenant_id:
+        raise PermissionDenied("Access denied to this route.")
+    elif tenant and not request.user.is_superuser and route.tenant_id != tenant.id:
         raise PermissionDenied("Access denied to this route.")
 
     if request.method == 'POST':

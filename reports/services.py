@@ -20,7 +20,10 @@ def get_daily_statement_data(statement_date=None, route_id=None, tenant=None):
         qs = qs.filter(tenant=tenant)
 
     if route_id:
-        qs = qs.filter(route_id=route_id)
+        try:
+            qs = qs.filter(route_id=int(route_id))
+        except (ValueError, TypeError):
+            pass
 
     shipments = list(qs.order_by('route__name', 'created_at'))
 
@@ -79,6 +82,20 @@ def get_daily_statement_data(statement_date=None, route_id=None, tenant=None):
     }
 
 
+def clean_pdf_text(text: str) -> str:
+    """Sanitize text for standard fpdf2 Helvetica font (Latin-1) to avoid FPDFUnicodeEncodingException."""
+    if not text:
+        return ''
+    replacements = {
+        '\u2018': "'", '\u2019': "'", '\u201c': '"', '\u201d': '"',
+        '\u2013': '-', '\u2014': '-', '\u2026': '...', '\u00a0': ' ',
+        '\u2022': '*',
+    }
+    for orig, rep in replacements.items():
+        text = text.replace(orig, rep)
+    return text.encode('latin-1', errors='replace').decode('latin-1')
+
+
 def generate_daily_statement_pdf_bytes(data: dict) -> bytes:
     """
     Renders an A4 PDF document using fpdf2 with tenant dynamic branding and headings.
@@ -98,13 +115,13 @@ def generate_daily_statement_pdf_bytes(data: dict) -> bytes:
         def header(self):
             self.set_font('Helvetica', 'B', 14)
             self.set_text_color(*primary_rgb)
-            self.cell(0, 7, data['company_name'].upper(), new_x="LMARGIN", new_y="NEXT", align='C')
+            self.cell(0, 7, clean_pdf_text(data['company_name'].upper()), new_x="LMARGIN", new_y="NEXT", align='C')
             self.set_font('Helvetica', 'B', 10)
             self.set_text_color(100, 116, 139)
-            self.cell(0, 5, f"DAILY PARCEL WAYBILL & CONSIGNMENT STATEMENT - A4", new_x="LMARGIN", new_y="NEXT", align='C')
+            self.cell(0, 5, "DAILY PARCEL WAYBILL & CONSIGNMENT STATEMENT - A4", new_x="LMARGIN", new_y="NEXT", align='C')
             self.set_font('Helvetica', '', 9)
             self.set_text_color(51, 65, 85)
-            self.cell(0, 5, f"Date: {data['statement_date']} | Origin: {data['head_office']}", new_x="LMARGIN", new_y="NEXT", align='C')
+            self.cell(0, 5, clean_pdf_text(f"Date: {data['statement_date']} | Origin: {data['head_office']}"), new_x="LMARGIN", new_y="NEXT", align='C')
             self.set_text_color(0, 0, 0)
             self.ln(3)
 
@@ -127,21 +144,21 @@ def generate_daily_statement_pdf_bytes(data: dict) -> bytes:
     pdf.set_text_color(15, 23, 42)
     headers = ['Tracking #', 'Route', 'Sender', 'Receiver', 'Items', 'Truck', 'Driver', 'Status', f"Price ({data['currency']})"]
     for i, h in enumerate(headers):
-        pdf.cell(col_w[i], 6, h, border=1, fill=True, align='C')
+        pdf.cell(col_w[i], 6, clean_pdf_text(h), border=1, fill=True, align='C')
     pdf.ln()
 
     pdf.set_font('Helvetica', '', 8)
     pdf.set_text_color(0, 0, 0)
     for p in data['shipments']:
         item_count = p.items.count()
-        pdf.cell(col_w[0], 5, p.tracking_number, border=1)
-        pdf.cell(col_w[1], 5, p.route.name[:14], border=1)
-        pdf.cell(col_w[2], 5, p.sender_name[:18], border=1)
-        pdf.cell(col_w[3], 5, p.receiver_name[:18], border=1)
+        pdf.cell(col_w[0], 5, clean_pdf_text(p.tracking_number), border=1)
+        pdf.cell(col_w[1], 5, clean_pdf_text(p.route.name[:14]), border=1)
+        pdf.cell(col_w[2], 5, clean_pdf_text(p.sender_name[:18]), border=1)
+        pdf.cell(col_w[3], 5, clean_pdf_text(p.receiver_name[:18]), border=1)
         pdf.cell(col_w[4], 5, str(item_count), border=1, align='C')
-        pdf.cell(col_w[5], 5, (p.truck_plate_number or '-')[:12], border=1)
-        pdf.cell(col_w[6], 5, (p.driver_name or '-')[:16], border=1)
-        pdf.cell(col_w[7], 5, f"{p.payment_status}", border=1, align='C')
+        pdf.cell(col_w[5], 5, clean_pdf_text((p.truck_plate_number or '-')[:12]), border=1)
+        pdf.cell(col_w[6], 5, clean_pdf_text((p.driver_name or '-')[:16]), border=1)
+        pdf.cell(col_w[7], 5, clean_pdf_text(str(p.payment_status)), border=1, align='C')
         pdf.cell(col_w[8], 5, f"{p.price:,.2f}", border=1, align='R')
         pdf.ln()
 
@@ -160,6 +177,6 @@ def generate_daily_statement_pdf_bytes(data: dict) -> bytes:
         f"COD Outstanding: {cur} {data['cod_total']:,.2f}  |  "
         f"UNPAID: {cur} {data['unpaid_total']:,.2f}"
     )
-    pdf.cell(0, 6, summary_text, border=1, new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 6, clean_pdf_text(summary_text), border=1, new_x="LMARGIN", new_y="NEXT")
 
     return bytes(pdf.output())

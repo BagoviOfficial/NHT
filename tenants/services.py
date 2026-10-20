@@ -157,8 +157,8 @@ def provision_tenant(
                 is_active=True
             )
 
-    # 5. Provision Choice Configurations for Tenant
-    from core.models import ChoiceConfig
+    # 5. Provision Choice & Field Configurations for Tenant
+    from core.models import ChoiceConfig, FieldConfig
     default_choices = [
         ('wrap_type', 'Box', 'Box', True, 1),
         ('wrap_type', 'Sack', 'Sack', False, 2),
@@ -180,6 +180,32 @@ def provision_tenant(
             key=k,
             label=lbl,
             is_default=is_def,
+            order=ord_n,
+            is_active=True
+        )
+
+    default_fields = [
+        ('sender_name', 'Sender Full Name', 'Enter sender full name', '', True, True, 1),
+        ('sender_phone', 'Sender Phone Number', '+254 7...', 'Kenyan mobile phone number', True, True, 2),
+        ('receiver_name', 'Receiver Full Name', 'Enter receiver full name', '', True, True, 3),
+        ('receiver_phone', 'Receiver Phone Number', '+254 7...', 'Kenyan mobile phone number', True, True, 4),
+        ('receiver_id_number', 'Receiver ID / Passport', 'National ID Number', 'Required for collection verification', True, True, 5),
+        ('truck_plate_number', 'Bus / Truck Plate Number', 'e.g. KDC 123A', 'Assigned vehicle upon dispatch', False, True, 6),
+        ('driver_name', 'Driver Full Name', 'Full name of driver', 'Assigned driver upon dispatch', False, True, 7),
+        ('item_description', 'Item Description', 'Describe contents of parcel', '', True, True, 8),
+        ('wrap_type', 'Wrap / Package Type', '', 'Select or specify packaging', True, True, 9),
+        ('quantity', 'Quantity', '1', 'Number of units', True, True, 10),
+        ('unit_price', f'Unit Price ({tenant.currency})', '0.00', 'Charge per item unit', True, True, 11),
+    ]
+    for key, lbl, ph, hlp, req, vis, ord_n in default_fields:
+        FieldConfig.objects.create(
+            tenant=tenant,
+            field_key=key,
+            label=lbl,
+            placeholder=ph,
+            help_text=hlp,
+            is_required=req,
+            is_visible=vis,
             order=ord_n,
             is_active=True
         )

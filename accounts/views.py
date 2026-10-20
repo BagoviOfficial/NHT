@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
+from django.utils.http import url_has_allowed_host_and_scheme
 from audit.services import log_audit_event, get_client_ip
 from .models import User, Role
 from .forms import LoginForm, UserCreateForm, UserUpdateForm, AdminPasswordResetForm
@@ -47,7 +48,7 @@ def login_view(request):
                 cache.delete(fail_cache_key)
                 messages.success(request, f"Welcome back, {user.first_name or user.username}!")
                 next_url = request.GET.get('next')
-                if next_url and next_url.startswith('/'):
+                if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
                     return redirect(next_url)
                 return redirect('dashboard')
             else:
@@ -152,7 +153,9 @@ def user_create_view(request):
 def user_update_view(request, pk):
     tenant = getattr(request, 'tenant', None) or getattr(request.user, 'tenant', None)
     target_user = get_object_or_404(User, pk=pk)
-    if tenant and target_user.tenant_id and target_user.tenant_id != tenant.id:
+    if request.user.tenant and target_user.tenant_id != request.user.tenant_id:
+        raise PermissionDenied("Access denied to this user account.")
+    elif tenant and not request.user.is_superuser and target_user.tenant_id != tenant.id:
         raise PermissionDenied("Access denied to this user account.")
 
     if request.method == 'POST':
@@ -166,15 +169,16 @@ def user_update_view(request, pk):
                     messages.error(request, "Cannot demote the only remaining active Super Admin.")
                     return render(request, 'admin_panel/user_form.html', {'form': form, 'target_user': target_user, 'title': f'Edit User {target_user.username}'})
 
-            old_vals = {'role': target_user.role, 'is_active': target_user.is_active}
+            old_vals = {'role': form.initial.get('role'), 'is_active': form.initial.get('is_active')}
             form.save()
+            new_vals = {'role': form.cleaned_data.get('role'), 'is_active': form.cleaned_data.get('is_active')}
             log_audit_event(
                 action='USER_UPDATE',
                 actor=request.user,
                 object_type='User',
                 object_identifier=str(target_user.username),
                 old_values=old_vals,
-                new_values={'role': target_user.role, 'is_active': target_user.is_active},
+                new_values=new_vals,
                 reason="Updated staff user record",
                 request=request,
                 tenant=tenant
@@ -191,7 +195,9 @@ def user_update_view(request, pk):
 def user_toggle_active_view(request, pk):
     target_user = get_object_or_404(User, pk=pk)
     tenant = getattr(request, 'tenant', None) or getattr(request.user, 'tenant', None)
-    if tenant and target_user.tenant_id and target_user.tenant_id != tenant.id:
+    if request.user.tenant and target_user.tenant_id != request.user.tenant_id:
+        raise PermissionDenied("Access denied to this user account.")
+    elif tenant and not request.user.is_superuser and target_user.tenant_id != tenant.id:
         raise PermissionDenied("Access denied to this user account.")
 
     if request.method == 'POST':
@@ -227,7 +233,9 @@ def user_toggle_active_view(request, pk):
 def user_password_reset_view(request, pk):
     target_user = get_object_or_404(User, pk=pk)
     tenant = getattr(request, 'tenant', None) or getattr(request.user, 'tenant', None)
-    if tenant and target_user.tenant_id and target_user.tenant_id != tenant.id:
+    if request.user.tenant and target_user.tenant_id != request.user.tenant_id:
+        raise PermissionDenied("Access denied to this user account.")
+    elif tenant and not request.user.is_superuser and target_user.tenant_id != tenant.id:
         raise PermissionDenied("Access denied to this user account.")
 
     if request.method == 'POST':

@@ -55,3 +55,20 @@ class ChoiceConfigForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'order': forms.NumberInput(attrs={'class': 'form-control'}),
         }
+
+    def __init__(self, *args, tenant=None, **kwargs):
+        self.tenant = tenant
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        category = cleaned_data.get('category')
+        key = (cleaned_data.get('key') or '').strip()
+        tenant = self.tenant or (self.instance.tenant if self.instance and self.instance.pk else None)
+        if category and key:
+            qs = ChoiceConfig.objects.filter(tenant=tenant, category=category, key=key)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                self.add_error('key', f"A choice with key '{key}' already exists in this category.")
+        return cleaned_data

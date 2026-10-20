@@ -49,6 +49,7 @@ def public_track_view(request, tracking_number=None):
     - Exposes ONLY safe public tracking information (status, route, public timeline).
     - NEVER leaks financial data, sender/receiver personal IDs or phone numbers.
     """
+    initial_tenant = getattr(request, 'tenant', None)
     settings = SiteSettings.load()
     client_ip = get_client_ip(request) or '127.0.0.1'
 
@@ -79,7 +80,7 @@ def public_track_view(request, tracking_number=None):
         except Parcel.DoesNotExist:
             not_found = True
 
-    tenant = parcel.tenant if parcel else getattr(request, 'tenant', None)
+    tenant = parcel.tenant if parcel else initial_tenant
 
     return render(request, 'parcels/public_track.html', {
         'parcel': parcel,
@@ -103,7 +104,8 @@ def public_track_view(request, tracking_number=None):
 def dashboard_view(request):
     """Staff operational dashboard with role-aware metrics."""
     user = request.user
-    base_qs = get_parcels_for_user(user)
+    tenant = getattr(request, 'tenant', None) or getattr(request.user, 'tenant', None)
+    base_qs = get_parcels_for_user(user, tenant=tenant)
 
     today = timezone.localdate()
     today_count = base_qs.filter(created_at__date=today).count()
@@ -141,7 +143,8 @@ def dashboard_view(request):
 @login_required
 def parcel_list_view(request):
     """Search and filter parcels with pagination and object-level permissions."""
-    qs = get_parcels_for_user(request.user)
+    tenant = getattr(request, 'tenant', None) or getattr(request.user, 'tenant', None)
+    qs = get_parcels_for_user(request.user, tenant=tenant)
 
     q = request.GET.get('q', '').strip()
     status_filter = request.GET.get('status', '').strip()
@@ -159,8 +162,8 @@ def parcel_list_view(request):
         )
     if status_filter:
         qs = qs.filter(status=status_filter)
-    if route_filter:
-        qs = qs.filter(route_id=route_filter)
+    if route_filter and route_filter.isdigit():
+        qs = qs.filter(route_id=int(route_filter))
     if payment_status_filter and request.user.can_view_financials:
         qs = qs.filter(payment_status=payment_status_filter)
 
@@ -534,9 +537,9 @@ def parcel_admin_override_view(request, tracking_number):
         form = AdminOverrideForm(request.POST, instance=parcel)
         if form.is_valid():
             reason = form.cleaned_data['reason']
-            old_vals = {f: getattr(parcel, f) for f in form.changed_data if f != 'reason'}
+            old_vals = {f: form.initial.get(f) for f in form.changed_data if f != 'reason'}
             form.save()
-            new_vals = {f: getattr(parcel, f) for f in form.changed_data if f != 'reason'}
+            new_vals = {f: form.cleaned_data.get(f) for f in form.changed_data if f != 'reason'}
 
             log_audit_event(
                 action='ADMIN_OVERRIDE',

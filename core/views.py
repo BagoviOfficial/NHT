@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from accounts.decorators import super_admin_required
 from .models import SiteSettings, FieldConfig, ChoiceConfig, ALLOWED_FIELD_KEYS, ALLOWED_CHOICE_CATEGORIES
 from .forms import SiteSettingsForm, FieldConfigForm, ChoiceConfigForm
@@ -43,9 +44,9 @@ def settings_update_view(request):
     if request.method == 'POST':
         form = SiteSettingsForm(request.POST, instance=settings)
         if form.is_valid():
-            old_vals = {f: getattr(settings, f) for f in form.changed_data}
+            old_vals = {f: form.initial.get(f) for f in form.changed_data}
             form.save()
-            new_vals = {f: getattr(settings, f) for f in form.changed_data}
+            new_vals = {f: form.cleaned_data.get(f) for f in form.changed_data}
             log_audit_event(
                 actor=request.user,
                 action='SETTINGS_UPDATE',
@@ -87,6 +88,40 @@ def config_list_view(request):
 def field_config_edit_view(request, pk):
     cfg = get_object_or_404(FieldConfig, pk=pk)
     tenant = getattr(request, 'tenant', None) or getattr(request.user, 'tenant', None)
+    if request.user.tenant and cfg.tenant_id != request.user.tenant_id:
+        if cfg.tenant_id is None:
+            cfg, _ = FieldConfig.objects.get_or_create(
+                tenant=request.user.tenant,
+                field_key=cfg.field_key,
+                defaults={
+                    'label': cfg.label,
+                    'placeholder': cfg.placeholder,
+                    'help_text': cfg.help_text,
+                    'is_required': cfg.is_required,
+                    'is_visible': cfg.is_visible,
+                    'order': cfg.order,
+                    'is_active': cfg.is_active,
+                }
+            )
+        else:
+            raise PermissionDenied("Access denied to this configuration.")
+    elif tenant and not request.user.is_superuser and cfg.tenant_id != tenant.id:
+        if cfg.tenant_id is None:
+            cfg, _ = FieldConfig.objects.get_or_create(
+                tenant=tenant,
+                field_key=cfg.field_key,
+                defaults={
+                    'label': cfg.label,
+                    'placeholder': cfg.placeholder,
+                    'help_text': cfg.help_text,
+                    'is_required': cfg.is_required,
+                    'is_visible': cfg.is_visible,
+                    'order': cfg.order,
+                    'is_active': cfg.is_active,
+                }
+            )
+        else:
+            raise PermissionDenied("Access denied to this configuration.")
     if request.method == 'POST':
         form = FieldConfigForm(request.POST, instance=cfg)
         if form.is_valid():
@@ -112,7 +147,7 @@ def field_config_edit_view(request, pk):
 def choice_config_create_view(request):
     tenant = getattr(request, 'tenant', None) or getattr(request.user, 'tenant', None)
     if request.method == 'POST':
-        form = ChoiceConfigForm(request.POST)
+        form = ChoiceConfigForm(request.POST, tenant=tenant)
         if form.is_valid():
             choice = form.save(commit=False)
             choice.tenant = tenant
@@ -130,15 +165,46 @@ def choice_config_create_view(request):
             messages.success(request, f"Choice '{choice.label}' created successfully.")
             return redirect('admin_panel_config')
     else:
-        form = ChoiceConfigForm()
+        form = ChoiceConfigForm(tenant=tenant)
     return render(request, 'admin_panel/choice_config_form.html', {'form': form, 'title': 'Add New Dropdown Choice'})
 
 
 @super_admin_required
 def choice_config_edit_view(request, pk):
     choice = get_object_or_404(ChoiceConfig, pk=pk)
+    tenant = getattr(request, 'tenant', None) or getattr(request.user, 'tenant', None)
+    if request.user.tenant and choice.tenant_id != request.user.tenant_id:
+        if choice.tenant_id is None:
+            choice, _ = ChoiceConfig.objects.get_or_create(
+                tenant=request.user.tenant,
+                category=choice.category,
+                key=choice.key,
+                defaults={
+                    'label': choice.label,
+                    'is_default': choice.is_default,
+                    'is_active': choice.is_active,
+                    'order': choice.order,
+                }
+            )
+        else:
+            raise PermissionDenied("Access denied to this configuration.")
+    elif tenant and not request.user.is_superuser and choice.tenant_id != tenant.id:
+        if choice.tenant_id is None:
+            choice, _ = ChoiceConfig.objects.get_or_create(
+                tenant=tenant,
+                category=choice.category,
+                key=choice.key,
+                defaults={
+                    'label': choice.label,
+                    'is_default': choice.is_default,
+                    'is_active': choice.is_active,
+                    'order': choice.order,
+                }
+            )
+        else:
+            raise PermissionDenied("Access denied to this configuration.")
     if request.method == 'POST':
-        form = ChoiceConfigForm(request.POST, instance=choice)
+        form = ChoiceConfigForm(request.POST, instance=choice, tenant=tenant)
         if form.is_valid():
             form.save()
             log_audit_event(
@@ -148,12 +214,13 @@ def choice_config_edit_view(request, pk):
                 object_identifier=f"{choice.category}:{choice.key}",
                 new_values={'label': choice.label, 'is_active': choice.is_active},
                 reason="Updated dropdown choice",
-                request=request
+                request=request,
+                tenant=tenant
             )
             messages.success(request, f"Choice '{choice.label}' updated.")
             return redirect('admin_panel_config')
     else:
-        form = ChoiceConfigForm(instance=choice)
+        form = ChoiceConfigForm(instance=choice, tenant=tenant)
     return render(request, 'admin_panel/choice_config_form.html', {'form': form, 'choice': choice, 'title': 'Edit Dropdown Choice'})
 
 
@@ -161,6 +228,37 @@ def choice_config_edit_view(request, pk):
 def choice_config_toggle_view(request, pk):
     if request.method == 'POST':
         choice = get_object_or_404(ChoiceConfig, pk=pk)
+        tenant = getattr(request, 'tenant', None) or getattr(request.user, 'tenant', None)
+        if request.user.tenant and choice.tenant_id != request.user.tenant_id:
+            if choice.tenant_id is None:
+                choice, _ = ChoiceConfig.objects.get_or_create(
+                    tenant=request.user.tenant,
+                    category=choice.category,
+                    key=choice.key,
+                    defaults={
+                        'label': choice.label,
+                        'is_default': choice.is_default,
+                        'is_active': choice.is_active,
+                        'order': choice.order,
+                    }
+                )
+            else:
+                raise PermissionDenied("Access denied to this configuration.")
+        elif tenant and not request.user.is_superuser and choice.tenant_id != tenant.id:
+            if choice.tenant_id is None:
+                choice, _ = ChoiceConfig.objects.get_or_create(
+                    tenant=tenant,
+                    category=choice.category,
+                    key=choice.key,
+                    defaults={
+                        'label': choice.label,
+                        'is_default': choice.is_default,
+                        'is_active': choice.is_active,
+                        'order': choice.order,
+                    }
+                )
+            else:
+                raise PermissionDenied("Access denied to this configuration.")
         choice.is_active = not choice.is_active
         choice.save()
         log_audit_event(
@@ -170,7 +268,8 @@ def choice_config_toggle_view(request, pk):
             object_identifier=f"{choice.category}:{choice.key}",
             new_values={'is_active': choice.is_active},
             reason="Toggled choice active status",
-            request=request
+            request=request,
+            tenant=tenant
         )
         status_text = "activated" if choice.is_active else "deactivated"
         messages.success(request, f"Choice '{choice.label}' {status_text}.")

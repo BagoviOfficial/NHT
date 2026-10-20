@@ -560,6 +560,235 @@ class SaaSMultiTenantTests(TestCase):
         self.assertIn("Tawakal Express", sheet_html)
         self.assertNotIn("Northern Highways Transporters", sheet_html)
 
+    def test_cross_tenant_user_and_route_tampering_blocked(self):
+        """Verify tenant admin cannot edit or toggle users/routes of another tenant or platform superuser."""
+        self.client.login(username='twk_admin', password='Password123!')
+
+        # Attempt to edit platform owner (tenant_id is None) -> 403
+        res = self.client.get(reverse('user_update', args=[self.platform_admin.pk]))
+        self.assertEqual(res.status_code, 403)
+
+        # Attempt to toggle platform owner -> 403
+        res = self.client.post(reverse('user_toggle_active', args=[self.platform_admin.pk]))
+        self.assertEqual(res.status_code, 403)
+
+        # Attempt to edit tenant 1 user -> 403
+        res = self.client.get(reverse('user_update', args=[self.admin_1.pk]))
+        self.assertEqual(res.status_code, 403)
+
+        # Attempt to edit tenant 1 route -> 403
+        res = self.client.get(reverse('route_update', args=[self.route_1.pk]))
+        self.assertEqual(res.status_code, 403)
+
+        # Attempt to toggle tenant 1 route -> 403
+        res = self.client.post(reverse('route_toggle', args=[self.route_1.pk]))
+        self.assertEqual(res.status_code, 403)
+
+        # Attempt to delete tenant 1 route -> 403
+        res = self.client.post(reverse('route_delete', args=[self.route_1.pk]))
+        self.assertEqual(res.status_code, 403)
+
+    def test_cross_tenant_config_tampering_blocked(self):
+        """Verify tenant admin cannot edit or toggle choice/field configs belonging to another tenant."""
+        from core.models import ChoiceConfig
+        choice_nht = ChoiceConfig.objects.create(
+            tenant=self.tenant_1,
+            category='wrap_type',
+            key='SuperBox',
+            label='Super Box',
+            is_active=True
+        )
+        self.client.login(username='twk_admin', password='Password123!')
+
+        # Attempt to edit choice belonging to tenant 1 -> 403
+        res = self.client.get(reverse('choice_config_edit', args=[choice_nht.pk]))
+        self.assertEqual(res.status_code, 403)
+
+        # Attempt to toggle choice belonging to tenant 1 -> 403
+        res = self.client.post(reverse('choice_config_toggle', args=[choice_nht.pk]))
+        self.assertEqual(res.status_code, 403)
+
+    def test_admin_override_form_route_scoping(self):
+        """Verify AdminOverrideForm scopes route queryset to the parcel's tenant."""
+        from parcels.forms import AdminOverrideForm
+        parcel = create_parcel(
+            route=self.route_1,
+            sender_name="Sender", sender_phone="0711000001",
+            receiver_name="Receiver", receiver_phone="0711000002", receiver_id_number="12345",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+            items_data=[{'description': 'Test Item', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('500.00')}],
+            tenant=self.tenant_1
+        )
+        form = AdminOverrideForm(instance=parcel)
+        route_qs = form.fields['route'].queryset
+        self.assertIn(self.route_1, route_qs)
+        self.assertNotIn(self.route_2, route_qs)
+
+    def test_daily_statement_pdf_with_unicode_characters(self):
+        """Verify daily statement PDF generation does not crash on smart quotes, dashes, or unicode."""
+        from django.utils import timezone
+        from reports.services import generate_daily_statement_pdf_bytes, get_daily_statement_data
+        create_parcel(
+            route=self.route_1,
+            sender_name="Ahmed’s “Super” Shop", sender_phone="0711000001",
+            receiver_name="John & Co — Mandera", receiver_phone="0711000002", receiver_id_number="12345",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+            items_data=[{'description': 'Cargo with — dash & ‘quotes’', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('500.00')}],
+            tenant=self.tenant_1
+        )
+        data = get_daily_statement_data(timezone.localdate(), tenant=self.tenant_1)
+        pdf_bytes = generate_daily_statement_pdf_bytes(data)
+        self.assertTrue(pdf_bytes.startswith(b'%PDF'))
+
+    def test_invalid_query_parameters_handled_gracefully(self):
+        """Verify non-numeric route parameters do not trigger 500 server error."""
+        self.client.login(username='nht_admin', password='Password123!')
+        res_list = self.client.get(reverse('parcel_list'), {'route': 'non_numeric_id'})
+        self.assertEqual(res_list.status_code, 200)
+
+        res_stmt = self.client.get(reverse('daily_statement'), {'route': 'non_numeric_id'})
+        self.assertEqual(res_stmt.status_code, 200)
+
+    def test_suspended_tenant_allows_login_logout(self):
+        """Verify that suspended tenant screen allows accessing login and logout endpoints."""
+        self.tenant_1.status = TenantStatus.SUSPENDED
+        self.tenant_1.is_active = False
+        self.tenant_1.save()
+
+        # Logged-in staff of suspended tenant accessing dashboard gets 403 suspended screen
+        self.client.login(username='nht_clerk', password='Password123!')
+        res_dash = self.client.get(reverse('dashboard'))
+        self.assertEqual(res_dash.status_code, 403)
+        self.assertIn("Suspended", res_dash.content.decode())
+
+        # Staff can successfully log out without 403
+        res_logout = self.client.get(reverse('logout'))
+        self.assertIn(res_logout.status_code, [200, 302])
+
+        # Login page is accessible without 403
+        res_login = self.client.get(reverse('login'))
+        self.assertEqual(res_login.status_code, 200)
+
+    def test_duplicate_route_name_in_same_tenant_validation(self):
+        """Verify submitting an existing route name for the same tenant shows a clean form error instead of 500."""
+        self.client.login(username='nht_admin', password='Password123!')
+        res = self.client.post(reverse('route_create'), {
+            'name': self.route_1.name,
+            'origin': 'Nairobi',
+            'description': 'Duplicate attempt',
+            'is_active': True
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertFormError(res.context['form'], 'name', f"A route named '{self.route_1.name}' already exists.")
+
+    def test_duplicate_choice_config_validation(self):
+        """Verify submitting an existing choice config key for the same tenant shows a clean error instead of 500."""
+        from core.models import ChoiceConfig
+        ChoiceConfig.objects.create(
+            tenant=self.tenant_1,
+            category='wrap_type',
+            key='ExistingBox',
+            label='Existing Box',
+            is_active=True
+        )
+        self.client.login(username='nht_admin', password='Password123!')
+        res = self.client.post(reverse('choice_config_create'), {
+            'category': 'wrap_type',
+            'key': 'ExistingBox',
+            'label': 'Duplicate Box',
+            'is_default': False,
+            'is_active': True,
+            'order': 1
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertFormError(res.context['form'], 'key', "A choice with key 'ExistingBox' already exists in this category.")
+
+    def test_field_config_auto_fork_for_tenant(self):
+        """Verify tenant admin editing a global default FieldConfig automatically forks a tenant-specific copy."""
+        from core.models import FieldConfig
+        global_cfg = FieldConfig.objects.create(
+            tenant=None,
+            field_key='sender_name',
+            label='Global Sender',
+            is_required=True,
+            is_visible=True,
+            order=1
+        )
+        self.client.login(username='twk_admin', password='Password123!')
+        # Post updated label
+        res = self.client.post(reverse('field_config_edit', args=[global_cfg.pk]), {
+            'label': 'Tawakal Custom Sender',
+            'placeholder': 'Enter your full name',
+            'help_text': '',
+            'is_required': True,
+            'is_visible': True,
+            'order': 1,
+            'is_active': True,
+        })
+        self.assertRedirects(res, reverse('admin_panel_config'))
+
+        # Check that a tenant-specific record was created with the customized label
+        twk_cfg = FieldConfig.objects.filter(tenant=self.tenant_2, field_key='sender_name').first()
+        self.assertIsNotNone(twk_cfg)
+        self.assertEqual(twk_cfg.label, 'Tawakal Custom Sender')
+        # Check global config was NOT mutated
+        global_cfg.refresh_from_db()
+        self.assertEqual(global_cfg.label, 'Global Sender')
+
+    def test_login_open_redirect_protection(self):
+        """Verify open redirect with protocol-relative URL is blocked upon login."""
+        res = self.client.post(reverse('login') + '?next=//attacker.com/steal-creds', {
+            'username': 'nht_clerk',
+            'password': 'Password123!'
+        })
+        self.assertRedirects(res, reverse('dashboard'))
+
+    def test_platform_admin_workspace_switch_scopes_parcels(self):
+        """Verify that when platform super admin switches workspace to tenant 1, only tenant 1 parcels appear."""
+        from parcels.models import Parcel
+        p1 = create_parcel(
+            route=self.route_1,
+            sender_name="Sender 1", sender_phone="0711000001",
+            receiver_name="Receiver 1", receiver_phone="0711000002", receiver_id_number="12345",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+            items_data=[{'description': 'Item 1', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('500.00')}],
+            tenant=self.tenant_1
+        )
+        p2 = create_parcel(
+            route=self.route_2,
+            sender_name="Sender 2", sender_phone="0711000003",
+            receiver_name="Receiver 2", receiver_phone="0711000004", receiver_id_number="67890",
+            payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+            items_data=[{'description': 'Item 2', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('800.00')}],
+            tenant=self.tenant_2
+        )
+
+        login_ok = self.client.login(username='platform_owner', password='OwnerPassword123!')
+        self.assertTrue(login_ok)
+        # Switch to tenant 1
+        res_switch = self.client.get(reverse('saas_switch_tenant', args=[self.tenant_1.pk]))
+        self.assertEqual(res_switch.status_code, 302)
+
+        # Dashboard and parcel list should only show p1
+        res_list = self.client.get(reverse('parcel_list'))
+        self.assertEqual(res_list.status_code, 200)
+        self.assertIn(p1.tracking_number, res_list.content.decode())
+        self.assertNotIn(p2.tracking_number, res_list.content.decode())
+
+    def test_create_parcel_cross_tenant_route_blocked(self):
+        """Verify create_parcel prevents assigning route of another tenant."""
+        from django.core.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            create_parcel(
+                route=self.route_2,  # Belongs to tenant 2
+                sender_name="Sender", sender_phone="0711000001",
+                receiver_name="Receiver", receiver_phone="0711000002", receiver_id_number="12345",
+                payment_status=PaymentStatus.PAID, payment_method=PaymentMethod.CASH,
+                items_data=[{'description': 'Test Item', 'wrap_type': 'Box', 'quantity': 1, 'unit_price': Decimal('500.00')}],
+                tenant=self.tenant_1  # Belongs to tenant 1
+            )
+
+
 
 
 

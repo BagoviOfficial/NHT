@@ -55,6 +55,13 @@ def create_parcel(
         elif request and getattr(request, 'tenant', None):
             tenant = request.tenant
 
+    if route and getattr(route, 'tenant_id', None) and tenant and getattr(tenant, 'pk', None):
+        if route.tenant_id != tenant.pk:
+            raise ValidationError("The selected destination route does not belong to this organization.")
+
+    if route and not route.is_active:
+        raise ValidationError("Cannot create consignment for an inactive destination route.")
+
     parcel = Parcel.objects.create(
         tenant=tenant,
         route=route,
@@ -152,6 +159,13 @@ def update_parcel(
 
     if not parcel.is_editable:
         raise ValidationError("Shipments cannot be edited once dispatched.")
+
+    if route and getattr(route, 'tenant_id', None) and parcel.tenant_id:
+        if route.tenant_id != parcel.tenant_id:
+            raise ValidationError("The selected destination route does not belong to this organization.")
+
+    if route and not route.is_active and route != parcel.route:
+        raise ValidationError("Cannot assign shipment to an inactive destination route.")
 
     old_vals = {
         'sender_name': parcel.sender_name,

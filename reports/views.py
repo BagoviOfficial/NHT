@@ -18,6 +18,8 @@ def daily_statement_view(request):
 
     date_str = request.GET.get('date')
     route_id = request.GET.get('route')
+    if route_id and not route_id.isdigit():
+        route_id = None
 
     if date_str:
         try:
@@ -62,6 +64,8 @@ def daily_statement_pdf_view(request):
 
     date_str = request.GET.get('date')
     route_id = request.GET.get('route')
+    if route_id and not route_id.isdigit():
+        route_id = None
 
     if date_str:
         try:

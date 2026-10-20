@@ -39,9 +39,9 @@ def can_user_access_parcel(user, parcel: Parcel) -> bool:
     if not user.is_authenticated or not user.is_active:
         return False
 
-    # Prevent cross-tenant access for non-platform superusers
-    if getattr(user, 'tenant_id', None) and getattr(parcel, 'tenant_id', None):
-        if user.tenant_id != parcel.tenant_id:
+    # Prevent cross-tenant access for tenant-scoped users
+    if getattr(user, 'tenant_id', None):
+        if getattr(parcel, 'tenant_id', None) != user.tenant_id:
             return False
 
     if user.is_superuser or user.role in [Role.SUPER_ADMIN, Role.OPERATIONS_MANAGER, Role.READ_ONLY, Role.COUNTER_STAFF, Role.DISPATCH_STAFF]:

@@ -176,3 +176,11 @@ class AdminOverrideForm(forms.ModelForm):
             'payment_method': forms.Select(attrs={'class': 'form-select'}),
             'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        tenant = None
+        if self.instance and getattr(self.instance, 'tenant_id', None):
+            tenant = self.instance.tenant
+        if tenant:
+            self.fields['route'].queryset = Route.objects.filter(tenant=tenant)

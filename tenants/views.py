@@ -162,9 +162,9 @@ def saas_client_edit_view(request, slug):
     if request.method == 'POST':
         form = TenantEditForm(request.POST, instance=tenant)
         if form.is_valid():
-            old_vals = {f: getattr(tenant, f) for f in form.changed_data}
+            old_vals = {f: form.initial.get(f) for f in form.changed_data}
             form.save()
-            new_vals = {f: getattr(tenant, f) for f in form.changed_data}
+            new_vals = {f: form.cleaned_data.get(f) for f in form.changed_data}
 
             log_audit_event(
                 actor=request.user,

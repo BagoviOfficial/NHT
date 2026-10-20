@@ -54,5 +54,6 @@ class TenantMiddleware(MiddlewareMixin):
         if request.tenant and (request.tenant.status == TenantStatus.SUSPENDED or not request.tenant.is_active):
             # If user is not superuser and accessing tenant routes
             if not (hasattr(request, 'user') and request.user.is_authenticated and request.user.is_superuser):
-                if not request.path.startswith('/static/') and not request.path.startswith('/accounts/logout/'):
+                exempt_paths = ('/static/', '/media/', '/logout/', '/login/', '/accounts/logout/', '/accounts/login/')
+                if not any(request.path.startswith(p) for p in exempt_paths):
                     return render(request, 'errors/tenant_suspended.html', {'tenant': request.tenant}, status=403)
