@@ -150,7 +150,8 @@ def generate_daily_statement_pdf_bytes(data: dict) -> bytes:
     pdf.set_font('Helvetica', '', 8)
     pdf.set_text_color(0, 0, 0)
     for p in data['shipments']:
-        item_count = p.items.count()
+        # Use prefetched in-memory cache len(...) instead of p.items.count() to eliminate N+1 SQL queries
+        item_count = len(p.items.all())
         pdf.cell(col_w[0], 5, clean_pdf_text(p.tracking_number), border=1)
         pdf.cell(col_w[1], 5, clean_pdf_text(p.route.name[:14]), border=1)
         pdf.cell(col_w[2], 5, clean_pdf_text(p.sender_name[:18]), border=1)

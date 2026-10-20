@@ -788,6 +788,68 @@ class SaaSMultiTenantTests(TestCase):
                 tenant=self.tenant_1  # Belongs to tenant 1
             )
 
+    def test_platform_admin_switched_workspace_field_config_creates_tenant_copy(self):
+        """Verify that when platform owner edits global field config inside a tenant workspace, a tenant override is created."""
+        from core.models import FieldConfig
+        global_cfg = FieldConfig.objects.create(
+            tenant=None,
+            field_key='receiver_name',
+            label='Global Receiver',
+            is_required=True,
+            is_visible=True,
+            order=3
+        )
+        self.client.login(username='platform_owner', password='OwnerPassword123!')
+        # Switch to Tenant 2
+        self.client.get(reverse('saas_switch_tenant', args=[self.tenant_2.pk]))
+
+        # Post edit on global config
+        res = self.client.post(reverse('field_config_edit', args=[global_cfg.pk]), {
+            'label': 'Tawakal Special Receiver',
+            'placeholder': 'Receiver name here',
+            'help_text': '',
+            'is_required': True,
+            'is_visible': True,
+            'order': 3,
+            'is_active': True,
+        })
+        self.assertRedirects(res, reverse('admin_panel_config'))
+
+        # Check tenant 2 now has their own custom record
+        twk_cfg = FieldConfig.objects.filter(tenant=self.tenant_2, field_key='receiver_name').first()
+        self.assertIsNotNone(twk_cfg)
+        self.assertEqual(twk_cfg.label, 'Tawakal Special Receiver')
+
+        # Global config remains untouched
+        global_cfg.refresh_from_db()
+        self.assertEqual(global_cfg.label, 'Global Receiver')
+
+    def test_login_preserves_next_url_redirect(self):
+        """Verify that ?next= query parameter is preserved and followed upon login."""
+        target_url = reverse('parcel_create')
+        res = self.client.post(reverse('login') + f'?next={target_url}', {
+            'username': 'nht_clerk',
+            'password': 'Password123!'
+        })
+        self.assertRedirects(res, target_url)
+
+    def test_user_update_prevents_deactivating_sole_superadmin(self):
+        """Verify user_update_view prevents deactivating the sole platform superuser."""
+        self.client.login(username='platform_owner', password='OwnerPassword123!')
+        res = self.client.post(reverse('user_update', args=[self.platform_admin.pk]), {
+            'first_name': 'Platform',
+            'last_name': 'Owner',
+            'phone': self.platform_admin.phone,
+            'email': self.platform_admin.email,
+            'role': Role.SUPER_ADMIN,
+            'is_active': False,  # Attempting to deactivate sole super admin
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Cannot demote or deactivate the only remaining active Super Admin")
+        self.platform_admin.refresh_from_db()
+        self.assertTrue(self.platform_admin.is_active)
+
+
 
 
 

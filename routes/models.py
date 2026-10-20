@@ -45,5 +45,5 @@ class Route(models.Model):
         super().save(*args, **kwargs)
 
     def can_be_deleted(self):
-        """Check if any parcels reference this route."""
-        return not self.parcels.exists()
+        """Check if any parcels or destination staff members reference this route to prevent dangling assignments."""
+        return not self.parcels.exists() and not self.assigned_staff.exists()

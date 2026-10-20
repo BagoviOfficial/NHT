@@ -115,12 +115,11 @@ def provision_tenant(
 
     raw_password = admin_password.strip() if admin_password else generate_secure_password(12)
 
-    # Check username collision
-    if User.objects.filter(username=admin_username).exists():
+    # Ensure collision-free unique administrator username and phone
+    while User.objects.filter(username=admin_username).exists():
         admin_username = f"{admin_username}_{secrets.randbelow(999)}"
 
-    # Check phone collision
-    if User.objects.filter(phone=admin_phone).exists():
+    while User.objects.filter(phone=admin_phone).exists():
         admin_phone = f"07{secrets.randbelow(89999999) + 10000000}"
 
     from accounts.models import Role

@@ -549,7 +549,8 @@ def parcel_admin_override_view(request, tracking_number):
                 old_values=old_vals,
                 new_values=new_vals,
                 reason=reason,
-                request=request
+                request=request,
+                tenant=parcel.tenant
             )
             messages.success(request, f"Administrative override executed for parcel {parcel.tracking_number}.")
             return redirect('parcel_detail', tracking_number=parcel.tracking_number)

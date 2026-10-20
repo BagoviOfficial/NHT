@@ -123,7 +123,7 @@ def route_delete_view(request, pk):
 
     if request.method == 'POST':
         if not route.can_be_deleted():
-            messages.error(request, f"Cannot delete '{route.name}' because shipments reference it. Deactivate the route instead.")
+            messages.error(request, f"Cannot delete '{route.name}' because shipments or staff reference it. Deactivate the route instead.")
             return redirect('route_list')
         name = route.name
         route.delete()

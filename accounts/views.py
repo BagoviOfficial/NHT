@@ -17,7 +17,12 @@ from .decorators import super_admin_required
 # ==============================================================================
 
 def login_view(request):
+    # Support destination redirection from both POST body and GET query string
+    next_url = request.POST.get('next') or request.GET.get('next')
     if request.user.is_authenticated:
+        # If user is already authenticated, redirect directly to safe target or dashboard
+        if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+            return redirect(next_url)
         return redirect('dashboard')
 
     client_ip = get_client_ip(request) or '127.0.0.1'
@@ -47,7 +52,6 @@ def login_view(request):
                 login(request, user)
                 cache.delete(fail_cache_key)
                 messages.success(request, f"Welcome back, {user.first_name or user.username}!")
-                next_url = request.GET.get('next')
                 if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
                     return redirect(next_url)
                 return redirect('dashboard')
@@ -162,11 +166,12 @@ def user_update_view(request, pk):
         form = UserUpdateForm(request.POST, instance=target_user, tenant=tenant)
         if form.is_valid():
             new_role = form.cleaned_data.get('role')
-            # Prevent demoting the last active superuser
-            if target_user.is_superuser and new_role != Role.SUPER_ADMIN:
+            new_is_active = form.cleaned_data.get('is_active')
+            # Protect platform and tenant integrity: prevent demoting or deactivating the sole remaining active Super Admin
+            if target_user.is_superuser and (new_role != Role.SUPER_ADMIN or not new_is_active):
                 active_superusers = User.objects.filter(is_superuser=True, is_active=True).exclude(pk=target_user.pk).count()
                 if active_superusers == 0:
-                    messages.error(request, "Cannot demote the only remaining active Super Admin.")
+                    messages.error(request, "Cannot demote or deactivate the only remaining active Super Admin.")
                     return render(request, 'admin_panel/user_form.html', {'form': form, 'target_user': target_user, 'title': f'Edit User {target_user.username}'})
 
             old_vals = {'role': form.initial.get('role'), 'is_active': form.initial.get('is_active')}

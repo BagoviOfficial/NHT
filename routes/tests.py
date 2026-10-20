@@ -60,3 +60,20 @@ class RouteManagementTests(TestCase):
         response = self.client.post(reverse('route_delete', args=[r.pk]), follow=True)
         self.assertTrue(Route.objects.filter(pk=r.pk).exists())
         self.assertContains(response, "Cannot delete")
+
+    def test_route_referenced_by_assigned_staff_cannot_be_deleted(self):
+        r = Route.objects.create(name="Rhamu")
+        User.objects.create_user(
+            username="rhamu_staff",
+            phone="0711999999",
+            password="Password123!",
+            role=Role.DESTINATION_STAFF,
+            assigned_route=r,
+            is_staff=True
+        )
+        self.assertFalse(r.can_be_deleted())
+
+        self.client.login(username="admin_route", password="Password123!")
+        response = self.client.post(reverse('route_delete', args=[r.pk]), follow=True)
+        self.assertTrue(Route.objects.filter(pk=r.pk).exists())
+        self.assertContains(response, "Cannot delete")

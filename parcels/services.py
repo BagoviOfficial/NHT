@@ -131,7 +131,8 @@ def create_parcel(
             'items_count': len(items_data),
         },
         reason="Registered new consignment",
-        request=request
+        request=request,
+        tenant=parcel.tenant
     )
 
     return parcel
@@ -232,7 +233,8 @@ def update_parcel(
             'route': parcel.route.name,
         },
         reason="Updated parcel consignment data before dispatch",
-        request=request
+        request=request,
+        tenant=parcel.tenant
     )
 
     return parcel
@@ -298,7 +300,8 @@ def transition_parcel_status(
         old_values={'status': old_status},
         new_values={'status': new_status, 'truck': parcel.truck_plate_number, 'driver': parcel.driver_name},
         reason=note or f"Transitioned parcel to {new_status}",
-        request=request
+        request=request,
+        tenant=parcel.tenant
     )
 
     return parcel
@@ -357,7 +360,8 @@ def collect_parcel(
         old_values={'status': old_status},
         new_values={'status': ParcelStatus.COLLECTED, 'collected_by': collector},
         reason=f"Parcel collected by {collector}",
-        request=request
+        request=request,
+        tenant=parcel.tenant
     )
 
     return parcel
@@ -408,7 +412,8 @@ def cancel_parcel(
         old_values={'status': old_status},
         new_values={'status': ParcelStatus.CANCELLED},
         reason=clean_reason,
-        request=request
+        request=request,
+        tenant=parcel.tenant
     )
 
     return parcel

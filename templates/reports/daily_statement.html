@@ -145,7 +145,7 @@
               <div class="small fw-semibold">{{ p.receiver_name }}</div>
               <small class="text-muted">{{ p.receiver_phone }}</small>
             </td>
-            <td class="text-center">{{ p.items.count }}</td>
+            <td class="text-center">{{ p.items.all|length }}</td>
             <td class="small">{{ p.truck_plate_number|default:"-" }}</td>
             <td class="small">{{ p.driver_name|default:"-" }}</td>
             <td class="text-center">
